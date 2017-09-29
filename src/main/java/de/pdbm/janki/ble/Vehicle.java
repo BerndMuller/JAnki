@@ -147,26 +147,13 @@ public class Vehicle {
 	private void onValueNotification(byte[] bytes) {
 		AnkiBle.log(LogType.VALUE_NOTIFICATION, "Value notification: " + Arrays.toString(bytes));
 		Notification notification = NotificationParser.parse(this, bytes);
-		
-		System.out.println("Type: " + notification.getClass());
-		System.out.println("xxx: " + (notification instanceof PositionUpdate));
-		
-		
-		
 		if (notification instanceof PositionUpdate) {
-			System.out.println("ja, ist PositionUpdate");
 			PositionUpdate pu = (PositionUpdate) notification;
-			System.out.println("nach Cast");
-			//System.out.println(String.format("Position(%s, %d, %d)", pu.getVehicle().getMacAddress(), pu.getLocation(), pu.getRoadPiece()));
-//			System.out.println("Neu: " + pu.getVehicle().getMacAddress() + " " + pu.getLocation() + " " + pu.getRoadPiece());
-			System.out.println(pu);
 			for (NotificationListener notificationListener : listeners) {
 				if (notificationListener instanceof PositionUpdateListener) {
-					System.out.println("Im NotificationAufrufverteiler mit " + notificationListener);
+					((PositionUpdateListener) notificationListener).onPositionUpdate(pu);
 				}
 			}
-		} else {
-			System.out.println("nein, ist nicht PositionUpdate");
 		}
 	}
 
