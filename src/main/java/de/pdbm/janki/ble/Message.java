@@ -79,7 +79,19 @@ class Message {
 	}
 	
 	
-	public static byte[] getChangeLane()  {
+	public static byte[] changeLaneMessage()  {
+		/* from protocol.h: 
+		typedef struct anki_vehicle_msg_change_lane {
+	    uint8_t     size;
+	    uint8_t     msg_id;
+	    uint16_t    horizontal_speed_mm_per_sec;
+	    uint16_t    horizontal_accel_mm_per_sec2; 
+	    float       offset_from_road_center_mm;
+	    uint8_t     hop_intent;
+	    uint8_t     tag;
+		}
+		*/
+		// TODO
 		return null;
 	}
 	
