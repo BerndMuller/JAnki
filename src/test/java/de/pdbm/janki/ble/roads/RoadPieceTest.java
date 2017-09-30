@@ -1,12 +1,9 @@
-package de.pdbm.anki.ble.roads;
+package de.pdbm.janki.ble.roads;
 
 import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
-
-import de.pdbm.janki.ble.roads.CornerRoadPiece;
-import de.pdbm.janki.ble.roads.RoadPiece;
 
 public class RoadPieceTest {
 

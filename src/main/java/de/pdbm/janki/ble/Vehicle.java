@@ -93,7 +93,7 @@ public class Vehicle {
 			writeCharacteristic.writeValue(Message.getSdkMode());
 			// TODO check if this is needed
 			AnkiBle.sleep(100);
-			writeCharacteristic.writeValue(Message.getSpeed((short) speed));
+			writeCharacteristic.writeValue(Message.speedMessage((short) speed));
 		} else {
 			System.out.println("not connected");
 		}

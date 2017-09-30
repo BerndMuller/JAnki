@@ -22,13 +22,14 @@ import java.io.IOException;
 class Message {
 
 	private static final byte SET_SPEED = 0x24;
+	private static final byte CHANGE_LANE= 0x25;
 	
 	
 	
 	/**
-	 * Gibt die Message zum Setzen des SDK-Modes auf 1 zurück.
+	 * Returns message representing 'set sdk mode to 1'.
 	 * 
-	 * Muss nach dem Connecten eines Devices immer gemacht werden.
+	 * This message must be send after connecting a device.
 	 * 
 	 * @return Message representing 'set sdk mode to 1'
 	 * 
@@ -37,11 +38,33 @@ class Message {
 		return new byte[] {3, -112, 1, 1};
 	}
 	
-	public static byte[] getSpeed(short speed) {
-		return getSpeed(speed, (short) 10000);
+	/**
+	 * 
+	 * @param speed
+	 * @return
+	 */
+	public static byte[] speedMessage(short speed) {
+		return speedMessage(speed, (short) 10000);
 	}
 	
-	public static byte[] getSpeed(short speed, short acceleration) {
+	/**
+	 * Returns a speed message using the given speed and acceleration.
+	 * 
+	 * @param speed
+	 * @param acceleration
+	 * @return Message representing a speed message using the given speed and acceleration.
+	 * 
+	 */
+	public static byte[] speedMessage(short speed, short acceleration) {
+		/* from protocol.h:
+		typedef struct anki_vehicle_msg_set_speed {
+		    uint8_t     size;
+		    uint8_t     msg_id;
+		    int16_t     speed_mm_per_sec;  // mm/sec
+		    int16_t     accel_mm_per_sec2; // mm/sec^2
+		    uint8_t     respect_road_piece_speed_limit;
+		}
+		*/
 		try {
 			ByteArrayOutputStream os = new ByteArrayOutputStream( );
 			os.write(new byte[] {6, SET_SPEED});
@@ -55,6 +78,10 @@ class Message {
 		}
 	}
 	
+	
+	public static byte[] getChangeLane()  {
+		return null;
+	}
 	
 	
 	private static byte[] shortToBytes(short value) {
