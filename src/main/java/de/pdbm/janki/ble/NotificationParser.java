@@ -3,10 +3,10 @@ package de.pdbm.janki.ble;
 import de.pdbm.janki.ble.roads.RoadPiece;
 
 /**
- * Parsen der BLE-Nachrichten.
+ * Parser for BLE messages.
  * <p>
  * 
- * 
+ * Based on C data types of Anki's SDK:
  * <a href="https://github.com/anki/drive-sdk/blob/master/include/ankidrive/protocol.h">protocol.h</a>
  * 
  * @author bernd
@@ -57,7 +57,7 @@ public class NotificationParser {
 			*/
 			
 			// road_piece_idx road_piece_idx_prev offset
-			// immer 0 0 gleich
+			// immer 0 0 und dann identische 4 Bytes
 			//System.out.println("Transition update: " + bytes[2] + " " + bytes[3] + " " + bytes[4] + " " + bytes[5] + " " + bytes[6] + " " + bytes[7] );
 			return null;
 			
@@ -79,8 +79,8 @@ public class NotificationParser {
 			*/
 			
 			RoadPiece roadPiece = RoadPiece.getRoadPieceForId(bytes[3]);
-			// immer 654321.0
-			//System.out.println("Offset: " + bytesToFloat(bytes[4], bytes[5], bytes[6], bytes[7]));
+			// immer 654321.0:
+			// System.out.println("Offset: " + bytesToFloat(bytes[4], bytes[5], bytes[6], bytes[7]));
 			return new PositionUpdate(vehicle, bytes[2], roadPiece);
 			
 		default:
