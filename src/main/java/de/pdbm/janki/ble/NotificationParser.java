@@ -14,9 +14,11 @@ import de.pdbm.janki.ble.roads.RoadPiece;
  */
 public class NotificationParser {
 
+	// TODO nachschauen, ob's da noch was interessantes gibt:
+	// https://github.com/IBM-Bluemix/node-mqtt-for-anki-overdrive/blob/master/receivedMessages.js
 	
-	private static final byte POSITION_UPDATE   = 0x27; // 39
-	private static final byte TRANSITION_UPDATE = 0x29; // 41
+	private static final byte POSITION_UPDATE   = 0x27; // decimal 39
+	private static final byte TRANSITION_UPDATE = 0x29; // decimal 41
 	// am Ende immer {7, 54, ...} 0x36 und {3, 77, ...} 0x4D
 	
 	
@@ -35,8 +37,28 @@ public class NotificationParser {
 		switch (bytes[1]) {
 		
 		case TRANSITION_UPDATE:
-			// road_piece_idx road_piece_idx_prev
-			//System.out.println("Transition update: " + bytes[2] + " " + bytes[3]);
+			/* from protocol.h:
+			typedef struct anki_vehicle_msg_localization_transition_update {
+			    uint8_t     size;
+			    uint8_t     msg_id;
+			    uint8_t     road_piece_idx;
+			    uint8_t     road_piece_idx_prev;
+			    float       offset_from_road_center_mm;
+			    uint8_t     driving_direction;
+			    uint8_t     last_recv_lane_change_id;
+			    uint8_t     last_exec_lane_change_id;
+			    uint16_t    last_desired_horizontal_speed_mm_per_sec;
+			    uint16_t    last_desired_speed_mm_per_sec;
+			    uint8_t     uphill_counter; 
+			    uint8_t     downhill_counter; 
+			    uint8_t     left_wheel_dist_cm;
+			    uint8_t     right_wheel_dist_cm;
+			}
+			*/
+			
+			// road_piece_idx road_piece_idx_prev offset
+			// immer 0 0 gleich
+			//System.out.println("Transition update: " + bytes[2] + " " + bytes[3] + " " + bytes[4] + " " + bytes[5] + " " + bytes[6] + " " + bytes[7] );
 			return null;
 			
 		case POSITION_UPDATE:
@@ -56,10 +78,9 @@ public class NotificationParser {
 			}
 			*/
 			
-			// location_id road_piece_id
-			
 			RoadPiece roadPiece = RoadPiece.getRoadPieceForId(bytes[3]);
-			System.out.println("Offset: " + bytesToFloat(bytes[4], bytes[5], bytes[6], bytes[7]));
+			// immer 654321.0
+			//System.out.println("Offset: " + bytesToFloat(bytes[4], bytes[5], bytes[6], bytes[7]));
 			return new PositionUpdate(vehicle, bytes[2], roadPiece);
 			
 		default:
@@ -67,7 +88,7 @@ public class NotificationParser {
 		}
 	}
 	
-	public static float bytesToFloat(byte byte0, byte byte1, byte byte2, byte byte3) {
+	private static float bytesToFloat(byte byte0, byte byte1, byte byte2, byte byte3) {
 		int asInt = (byte0 & 0xFF) | ((byte1 & 0xFF) << 8) | ((byte2 & 0xFF) << 16) | ((byte3 & 0xFF) << 24);
 		return Float.intBitsToFloat(asInt);	
 	}
