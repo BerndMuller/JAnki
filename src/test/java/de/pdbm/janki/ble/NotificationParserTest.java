@@ -5,12 +5,20 @@ import org.junit.Test;
 
 public class NotificationParserTest {
 
+	
 	@Test
 	public void transitionUpdate() {
-		Notification notification = NotificationParser.parse(null, new byte[] {0, NotificationParser.TRANSITION_UPDATE, 36, 0});
+		Notification notification = NotificationParser.parse(null, new byte[] {0, NotificationParser.TRANSITION_UPDATE, 0, 0});
 		Assert.assertTrue("Must be TransitionUpdate", notification.getClass().equals(TransitionUpdate.class));
 	}
 
+	
+	@Test(expected = RuntimeException.class)
+	public void transitionUpdateFailed() {
+		NotificationParser.parse(null, new byte[] {0, NotificationParser.TRANSITION_UPDATE, 1, 1});
+	}
+
+	
 	@Test
 	public void positionUpdate() {
 		Notification notification = NotificationParser.parse(null, 

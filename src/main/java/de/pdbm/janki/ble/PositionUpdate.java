@@ -23,9 +23,9 @@ public final class PositionUpdate extends Notification {
 	
 	@Override
 	public String toString() {
-		//return "PositionUpdate(" + String.format("%1$2s", "" + location) + ", " + roadPiece.getId() + ", " + ascendingLocations + ")";
-		return "PositionUpdate(" + location + ", " + roadPiece.getId() + ", " + ascendingLocations + ")";
+		return "PositionUpdate(" + String.format("%1$2s", "" + location) + ", " + roadPiece.getId() + ", " + ascendingLocations + ")";
 	}
+	
 
 	/**
 	 * Returns the location ID.

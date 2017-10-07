@@ -134,13 +134,13 @@ public class Vehicle {
 	}
 
 	@Override
-	public String toString() {
+	public String toString() { // TODO listeners output should be more compact
 		return "Vehicle " + bluetoothDevice.getAddress() + ", read " + (readCharacteristic == null ? "-" : "\u2718") 
 				+ ", write " + (writeCharacteristic == null ? "-" : "\u2718") + ", listeners =" + listeners;
 	}
 
 	/**
-	 * Methode wird vom BLE-System für jede Value-Notification aufgerufen.
+	 * Method which is called by BLE system for value notifications.
 	 * 
 	 * @param bytes The BLE message bytes
 	 */
@@ -149,9 +149,6 @@ public class Vehicle {
 		
 		try {
 			Notification notification = NotificationParser.parse(this, bytes);
-			System.out.println("Type of notification: " + notification.getClass());
-			System.out.println("instanceof PositionUpdate: " + (notification instanceof PositionUpdate));
-			System.out.println("instanceof TransitionUpdate: " + (notification instanceof TransitionUpdate));
 			if (notification instanceof PositionUpdate) {
 				PositionUpdate pu = (PositionUpdate) notification;
 				for (NotificationListener notificationListener : listeners) {
@@ -160,18 +157,19 @@ public class Vehicle {
 					}
 				}
 			} else if (notification instanceof TransitionUpdate) {
-				// TODO check if called
-				System.out.println("instance of TransitionUpdate");
 				TransitionUpdate tu = (TransitionUpdate) notification;
 				for (NotificationListener notificationListener : listeners) {
 					if (notificationListener instanceof TransitionUpdateListener) {
 						((TransitionUpdateListener) notificationListener).onTransitionUpdate(tu);
 					}
 				}
-			} else {
-				System.out.println("unknown notification " + bytes[1]);
+			} else if (notification instanceof DefaultNotification) {
+				AnkiBle.log(LogType.VALUE_NOTIFICATION, "Default notification: " + Arrays.toString(bytes) + ". Nothing happens.");
+			} else { // TODO is it ok to throw exception in try ?
+				throw new IllegalArgumentException("Unknown value notification message");
 			}
 		} catch (Exception e) {
+			// try-catch to prevent swallowing thrown exception by TinyB, which calls this method 
 			e.printStackTrace();
 		}
 	}

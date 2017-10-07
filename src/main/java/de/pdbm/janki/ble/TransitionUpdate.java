@@ -26,11 +26,9 @@ public final class TransitionUpdate extends Notification {
 	
 	@Override
 	public String toString() {
-		return "TransitionUpdate(" + location + ", " + roadPiece + ")";
-		
-		//return "TransitionUpdate(" + String.format("%1$2s", "" + location) + ", " + roadPiece + ")";
-		
+		return "TransitionUpdate(" + String.format("%1$2s", "" + location) + ", " + roadPiece + ")";
 	}
+	
 
 	/**
 	 * Returns the location ID.

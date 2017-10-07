@@ -98,7 +98,7 @@ public class NotificationParser {
 		}
 			
 		default:
-			return null;
+			return new DefaultNotification(vehicle, bytes);
 		}
 	}
 	
