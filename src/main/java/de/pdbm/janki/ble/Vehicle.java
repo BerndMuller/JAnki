@@ -146,14 +146,33 @@ public class Vehicle {
 	 */
 	private void onValueNotification(byte[] bytes) {
 		AnkiBle.log(LogType.VALUE_NOTIFICATION, "Value notification: " + Arrays.toString(bytes));
-		Notification notification = NotificationParser.parse(this, bytes);
-		if (notification instanceof PositionUpdate) {
-			PositionUpdate pu = (PositionUpdate) notification;
-			for (NotificationListener notificationListener : listeners) {
-				if (notificationListener instanceof PositionUpdateListener) {
-					((PositionUpdateListener) notificationListener).onPositionUpdate(pu);
+		
+		try {
+			Notification notification = NotificationParser.parse(this, bytes);
+			System.out.println("Type of notification: " + notification.getClass());
+			System.out.println("instanceof PositionUpdate: " + (notification instanceof PositionUpdate));
+			System.out.println("instanceof TransitionUpdate: " + (notification instanceof TransitionUpdate));
+			if (notification instanceof PositionUpdate) {
+				PositionUpdate pu = (PositionUpdate) notification;
+				for (NotificationListener notificationListener : listeners) {
+					if (notificationListener instanceof PositionUpdateListener) {
+						((PositionUpdateListener) notificationListener).onPositionUpdate(pu);
+					}
 				}
+			} else if (notification instanceof TransitionUpdate) {
+				// TODO check if called
+				System.out.println("instance of TransitionUpdate");
+				TransitionUpdate tu = (TransitionUpdate) notification;
+				for (NotificationListener notificationListener : listeners) {
+					if (notificationListener instanceof TransitionUpdateListener) {
+						((TransitionUpdateListener) notificationListener).onTransitionUpdate(tu);
+					}
+				}
+			} else {
+				System.out.println("unknown notification " + bytes[1]);
 			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 

@@ -17,8 +17,8 @@ public class NotificationParser {
 	// TODO nachschauen, ob's da noch was interessantes gibt:
 	// https://github.com/IBM-Bluemix/node-mqtt-for-anki-overdrive/blob/master/receivedMessages.js
 	
-	private static final byte POSITION_UPDATE   = 0x27; // decimal 39
-	private static final byte TRANSITION_UPDATE = 0x29; // decimal 41
+	static final byte POSITION_UPDATE   = 0x27; // decimal 39
+	static final byte TRANSITION_UPDATE = 0x29; // decimal 41
 	// am Ende immer {7, 54, ...} 0x36 und {3, 77, ...} 0x4D
 	
 	
@@ -36,7 +36,8 @@ public class NotificationParser {
 	public static Notification parse(Vehicle vehicle, byte[] bytes) {
 		switch (bytes[1]) {
 		
-		case TRANSITION_UPDATE:
+		case TRANSITION_UPDATE: {
+
 			/* from protocol.h:
 			typedef struct anki_vehicle_msg_localization_transition_update {
 			    uint8_t     size;
@@ -56,12 +57,21 @@ public class NotificationParser {
 			}
 			*/
 			
-			// road_piece_idx road_piece_idx_prev offset
-			// immer 0 0 und dann identische 4 Bytes
-			//System.out.println("Transition update: " + bytes[2] + " " + bytes[3] + " " + bytes[4] + " " + bytes[5] + " " + bytes[6] + " " + bytes[7] );
-			return null;
+			/* 
+			 * offset_from_road_center_mm (bytes[4], bytes[5], bytes[6], bytes[7])
+			 * enthält immer identische Werte, nämlich 16 -65 31 73 
+			 */
 			
-		case POSITION_UPDATE:
+			// bytes[2] and bytes[3]) always 0, check this and return dummy
+			if (bytes[2] != 0 || bytes[3] != 0) {
+				throw new RuntimeException("Firmware has changed. Update 'NotificationParser.parse().");
+			}
+			return new TransitionUpdate(vehicle, 0, null);
+		}
+		
+						
+		case POSITION_UPDATE: {
+			
 			/* from protocol.h:
 			typedef struct anki_vehicle_msg_localization_position_update {
 			    uint8_t     size;
@@ -78,16 +88,23 @@ public class NotificationParser {
 			}
 			*/
 			
+			/* 
+			 * offset_from_road_center_mm (bytes[4], bytes[5], bytes[6], bytes[7])
+			 * enthält immer identische Werte, nämlich 16 -65 31 73 
+			 */
+			
 			RoadPiece roadPiece = RoadPiece.getRoadPieceForId(bytes[3]);
-			// immer 654321.0:
-			// System.out.println("Offset: " + bytesToFloat(bytes[4], bytes[5], bytes[6], bytes[7]));
-			return new PositionUpdate(vehicle, bytes[2], roadPiece);
+			return new PositionUpdate(vehicle, bytes[2], roadPiece, ! ((bytes[10] & 0x40) == 0x40));
+		}
 			
 		default:
 			return null;
 		}
 	}
 	
+	
+	@SuppressWarnings("unused") 
+	// not used because offset_from_road_center_mm useless values 
 	private static float bytesToFloat(byte byte0, byte byte1, byte byte2, byte byte3) {
 		int asInt = (byte0 & 0xFF) | ((byte1 & 0xFF) << 8) | ((byte2 & 0xFF) << 16) | ((byte3 & 0xFF) << 24);
 		return Float.intBitsToFloat(asInt);	

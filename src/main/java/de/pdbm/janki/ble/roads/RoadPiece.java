@@ -46,6 +46,7 @@ public abstract class RoadPiece {
 		return all.stream().filter(r -> r.id == id).findFirst().orElseThrow(() -> new IllegalArgumentException("Road Piece Id not valid"));
 	}
 	
+	
 	public static List<RoadPiece> all() {
 		return all;
 	}
