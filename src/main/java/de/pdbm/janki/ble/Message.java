@@ -31,7 +31,7 @@ class Message {
 	 * 
 	 * This message must be send after connecting a device.
 	 * 
-	 * @return Message representing 'set sdk mode to 1'
+	 * @return message representing 'set sdk mode to 1'
 	 * 
 	 */
 	public static byte[] getSdkMode() {
@@ -40,8 +40,8 @@ class Message {
 	
 	/**
 	 * 
-	 * @param speed
-	 * @return
+	 * @param speed the speed
+	 * @return message representing a speed message using the given speed
 	 */
 	public static byte[] speedMessage(short speed) {
 		return speedMessage(speed, (short) 10000);
@@ -50,9 +50,9 @@ class Message {
 	/**
 	 * Returns a speed message using the given speed and acceleration.
 	 * 
-	 * @param speed
-	 * @param acceleration
-	 * @return Message representing a speed message using the given speed and acceleration.
+	 * @param speed the speed 
+	 * @param acceleration the acceleration
+	 * @return message representing a speed message using the given speed and acceleration
 	 * 
 	 */
 	public static byte[] speedMessage(short speed, short acceleration) {

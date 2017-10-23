@@ -73,7 +73,7 @@ public class Vehicle {
 	/**
 	 * Returns the vehicle for this MAC address.
 	 * 
-	 * @param mac
+	 * @param mac vehicle's MAC address
 	 * @return the vehicle
 	 */
 	public static Vehicle get(String mac) {
@@ -102,7 +102,7 @@ public class Vehicle {
 	/**
 	 * Add a {@link NotificationListener}.
 	 * 
-	 * @param listener
+	 * @param listener the listener to add
 	 */
 	public void addNotificationListener(NotificationListener listener) {
 		listeners.add(listener);
@@ -140,7 +140,7 @@ public class Vehicle {
 	}
 
 	/**
-	 * Method which is called by BLE system for value notifications.
+	 * Method called by BLE system for value notifications.
 	 * 
 	 * @param bytes The BLE message bytes
 	 */
@@ -174,6 +174,17 @@ public class Vehicle {
 		}
 	}
 
+	
+	/**
+	 * Method called by BLE system for connected notifications.
+	 * 
+	 * @param bytes The BLE message bytes
+	 */
+
+	private void onConnectedNotification(boolean flag) {
+		System.out.println("Connected Notification: " + this.getMacAddress() + " " + flag);
+	}
+	
 	
 	
 	/**
@@ -339,8 +350,15 @@ public class Vehicle {
 								log(LogType.DEVICE_DISCOVERY, "vehicle " + device.getAddress() + " already known");
 								Vehicle.vehicles.replace(Vehicle.get(device.getAddress()), System.nanoTime());
 							} else {
-								Vehicle.vehicles.put(new Vehicle(device), System.nanoTime());
+								Vehicle vehicle = new Vehicle(device);
+								Vehicle.vehicles.put(vehicle, System.nanoTime());
 								log(LogType.DEVICE_DISCOVERY, "vehicle " + device.getAddress() + " added");
+								vehicle.bluetoothDevice.enableConnectedNotifications(flag -> {
+									vehicle.onConnectedNotification(flag);
+								});
+//								vehicle.readCharacteristic.enableValueNotifications(bytes -> {
+//									vehicle.onValueNotification(bytes);
+//								});
 							}
 						}
 					}
