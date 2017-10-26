@@ -13,6 +13,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import tinyb.BluetoothDevice;
 import tinyb.BluetoothGattCharacteristic;
@@ -36,6 +37,8 @@ public class Vehicle {
 	private BluetoothGattCharacteristic writeCharacteristic;
 
 	private List<NotificationListener> listeners;
+	
+	private boolean connected;
 
 	static {
 		AnkiBle.sleep(0); // dummy to initialize AnkiBle class
@@ -43,8 +46,17 @@ public class Vehicle {
 
 
 	private Vehicle(BluetoothDevice bluetoothDevice) {
-		listeners = new ArrayList<>();
+		this.listeners = new ArrayList<>();
 		this.bluetoothDevice = bluetoothDevice;
+		this.addNotificationListener(new DefaultConnectedNotificationListener());
+
+		Map<Short, byte[]> manufacturerDataMap = bluetoothDevice.getManufacturerData();
+
+		for (Map.Entry<Short, byte[]> entry : manufacturerDataMap.entrySet()) {
+			System.out.println("Key: " + entry.getKey() + ", value: " + Arrays.toString(entry.getValue()));
+		}
+
+		// Model.getModel(9);
 	}
 
 	/**
@@ -99,6 +111,16 @@ public class Vehicle {
 		}
 	}
 
+	
+	/**
+	 * Returns true, if and only if. the vehicle is connected.
+	 * 
+	 * @return true, if vehicle is connected, otherwise false 
+	 */
+	public boolean isConnected() {
+		return connected;
+	}
+
 	/**
 	 * Add a {@link NotificationListener}.
 	 * 
@@ -135,8 +157,11 @@ public class Vehicle {
 
 	@Override
 	public String toString() { // TODO listeners output should be more compact
-		return "Vehicle " + bluetoothDevice.getAddress() + ", read " + (readCharacteristic == null ? "-" : "\u2718") 
-				+ ", write " + (writeCharacteristic == null ? "-" : "\u2718") + ", listeners =" + listeners;
+		return "Vehicle " + bluetoothDevice.getAddress() 
+				+ ", connected " + (connected ? "-" : "\u2718") 
+				+ ", read " + (readCharacteristic == null ? "-" : "\u2718") 
+				+ ", write " + (writeCharacteristic == null ? "-" : "\u2718") 
+				+ ", listeners =" + listeners.stream().map(l -> l.getClass().getSimpleName()).collect(Collectors.toList());
 	}
 
 	/**
@@ -178,11 +203,24 @@ public class Vehicle {
 	/**
 	 * Method called by BLE system for connected notifications.
 	 * 
-	 * @param bytes The BLE message bytes
+	 * @param flag the connection value
 	 */
 
 	private void onConnectedNotification(boolean flag) {
 		System.out.println("Connected Notification: " + this.getMacAddress() + " " + flag);
+		AnkiBle.log(LogType.CONNECTED_NOTIFICATION, "Connected notification: " + flag);
+		
+		try {
+			ConnectedNotification cn  = new ConnectedNotification(this, flag);
+			for (NotificationListener notificationListener : listeners) {
+				if (notificationListener instanceof ConnectedNotificationListener) {
+					((ConnectedNotificationListener) notificationListener).onConnectedNotification(cn);
+				}
+			}
+		} catch (Exception e) {
+			// try-catch to prevent swallowing thrown exception by TinyB, which calls this method 
+			e.printStackTrace();
+		}
 	}
 	
 	
@@ -356,9 +394,6 @@ public class Vehicle {
 								vehicle.bluetoothDevice.enableConnectedNotifications(flag -> {
 									vehicle.onConnectedNotification(flag);
 								});
-//								vehicle.readCharacteristic.enableValueNotifications(bytes -> {
-//									vehicle.onValueNotification(bytes);
-//								});
 							}
 						}
 					}
@@ -444,6 +479,37 @@ public class Vehicle {
 	 *
 	 */
 	public enum LogType {
-		DEVICE_DISCOVERY, DEVICE_INITIALIZATION, VALUE_NOTIFICATION;
+		DEVICE_DISCOVERY, DEVICE_INITIALIZATION, VALUE_NOTIFICATION, CONNECTED_NOTIFICATION;
+	}
+	
+	public enum Model {
+		
+		KOURAI(0x01), BOSON(0x02), RHO(0x03), KATAL(0x04), HADION(0x05), SPEKTRIX(0x06), CORAX(0x07), 
+		GROUNDSHOCK(0x08), SKULL(0x09), THERMO(0x0a), NUKE(0x0b), GUARDIAN(0x0d), BIGBANG(0x0e);
+
+		private int id;
+
+		private Model(int id) {
+			this.id = id;
+		}
+		
+		static Model getModel(int id) {
+			for (int i = 0; i < values().length; i++) {
+				if (values()[i].id == id) {
+					return values()[i];
+				}
+			}
+			throw new IllegalArgumentException("Unbekannte Auto-Id");
+		}
+	}
+	
+	private class DefaultConnectedNotificationListener implements ConnectedNotificationListener {
+
+		@Override
+		public void onConnectedNotification(ConnectedNotification connectedNotification) {
+			Vehicle.this.connected = connectedNotification.isConnected();
+			
+		}
+
 	}
 }
