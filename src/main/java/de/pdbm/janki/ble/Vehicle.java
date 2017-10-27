@@ -39,6 +39,8 @@ public class Vehicle {
 	private List<NotificationListener> listeners;
 	
 	private boolean connected;
+	
+	private Optional<Model> model;
 
 	static {
 		AnkiBle.sleep(0); // dummy to initialize AnkiBle class
@@ -49,14 +51,7 @@ public class Vehicle {
 		this.listeners = new ArrayList<>();
 		this.bluetoothDevice = bluetoothDevice;
 		this.addNotificationListener(new DefaultConnectedNotificationListener());
-
-		Map<Short, byte[]> manufacturerDataMap = bluetoothDevice.getManufacturerData();
-
-		for (Map.Entry<Short, byte[]> entry : manufacturerDataMap.entrySet()) {
-			System.out.println("Key: " + entry.getKey() + ", value: " + Arrays.toString(entry.getValue()));
-		}
-
-		// Model.getModel(9);
+		model = ManufacturerData.modelFor(bluetoothDevice);
 	}
 
 	/**
@@ -134,12 +129,13 @@ public class Vehicle {
 		return bluetoothDevice.getAddress();
 	}
 
-	
+	public Optional<Model> getModel() {
+		return model;
+	}
+
 	public static void toggleAllLogs() {
 		Arrays.stream(LogType.values()).forEach(t -> toggleLog(t));
 	}
-
-	
 	
 	public static void toggleLog(LogType toggle) {
 		AnkiBle.toggleLog(toggle);
@@ -156,12 +152,18 @@ public class Vehicle {
 	}
 
 	@Override
-	public String toString() { // TODO listeners output should be more compact
-		return "Vehicle " + bluetoothDevice.getAddress() 
-				+ ", connected " + (connected ? "-" : "\u2718") 
+	public String toString() {
+		return (model.isPresent() ? model.get().toString()+"(" : "Vehicle(")
+				+ bluetoothDevice.getAddress() + ")" 
+				+ ", connected " + (connected ? "\u2718" : "-") 
 				+ ", read " + (readCharacteristic == null ? "-" : "\u2718") 
 				+ ", write " + (writeCharacteristic == null ? "-" : "\u2718") 
 				+ ", listeners =" + listeners.stream().map(l -> l.getClass().getSimpleName()).collect(Collectors.toList());
+	}
+
+	public String toShortString() {
+		return (model.isPresent() ? model.get().toString()+"(" : "Vehicle(") + bluetoothDevice.getAddress() + ")"; 
+
 	}
 
 	/**
@@ -207,9 +209,7 @@ public class Vehicle {
 	 */
 
 	private void onConnectedNotification(boolean flag) {
-		System.out.println("Connected Notification: " + this.getMacAddress() + " " + flag);
 		AnkiBle.log(LogType.CONNECTED_NOTIFICATION, "Connected notification: " + flag);
-		
 		try {
 			ConnectedNotification cn  = new ConnectedNotification(this, flag);
 			for (NotificationListener notificationListener : listeners) {
@@ -269,6 +269,7 @@ public class Vehicle {
 			logToggles.put(LogType.DEVICE_DISCOVERY, Boolean.FALSE);
 			logToggles.put(LogType.DEVICE_INITIALIZATION, Boolean.FALSE);
 			logToggles.put(LogType.VALUE_NOTIFICATION, Boolean.FALSE);
+			logToggles.put(LogType.CONNECTED_NOTIFICATION, Boolean.FALSE);
 			Runtime.getRuntime().addShutdownHook(new Thread(() -> {AnkiBle.disconnectAll();}));
 		}
 
@@ -399,7 +400,7 @@ public class Vehicle {
 					}
 					Thread.sleep(1000);
 					manager.stopDiscovery();
-				} catch (InterruptedException e) {
+				} catch (Exception e) {
 					e.printStackTrace();
 				} finally {
 					lock.unlock();
@@ -424,27 +425,32 @@ public class Vehicle {
 		class DeviceInitializationThread extends Thread {
 
 			public void run() {
-				log(LogType.DEVICE_INITIALIZATION, "initializing bluetooth devices ...");
-				Set<Entry<Vehicle, Long>> vehicles = Vehicle.vehicles.entrySet();
-				for (Entry<Vehicle, Long> entry : vehicles) {
-					Vehicle vehicle = entry.getKey();
-					if (vehicle.writeCharacteristic == null) {
-						vehicle.writeCharacteristic = writeCharacteristicFor(vehicle.bluetoothDevice);
-						log(LogType.DEVICE_INITIALIZATION, "Write-Characteristic for " + vehicle + (vehicle == null ? " not " : "") + " set");
+				
+				try {
+					log(LogType.DEVICE_INITIALIZATION, "initializing bluetooth devices ...");
+					Set<Entry<Vehicle, Long>> vehicles = Vehicle.vehicles.entrySet();
+					for (Entry<Vehicle, Long> entry : vehicles) {
+						Vehicle vehicle = entry.getKey();
+						if (vehicle.writeCharacteristic == null) {
+							vehicle.writeCharacteristic = writeCharacteristicFor(vehicle.bluetoothDevice);
+							log(LogType.DEVICE_INITIALIZATION, "Write-Characteristic for " + vehicle + (vehicle == null ? " not " : "") + " set");
 
-					}
-					if (vehicle.readCharacteristic == null) {
-						vehicle.readCharacteristic = readCharacteristicFor(vehicle.bluetoothDevice);
-						log(LogType.DEVICE_INITIALIZATION, "Read-Characteristic for " + vehicle + (vehicle == null ? " not " : ""));
-						if (vehicle.readCharacteristic != null) {
-							vehicle.readCharacteristic.enableValueNotifications(bytes -> {
-								vehicle.onValueNotification(bytes);
-							});
-							log(LogType.DEVICE_INITIALIZATION, "Value notifications set for " + vehicle);
+						}
+						if (vehicle.readCharacteristic == null) {
+							vehicle.readCharacteristic = readCharacteristicFor(vehicle.bluetoothDevice);
+							log(LogType.DEVICE_INITIALIZATION, "Read-Characteristic for " + vehicle + (vehicle == null ? " not " : ""));
+							if (vehicle.readCharacteristic != null) {
+								vehicle.readCharacteristic.enableValueNotifications(bytes -> {
+									vehicle.onValueNotification(bytes);
+								});
+								log(LogType.DEVICE_INITIALIZATION, "Value notifications set for " + vehicle);
+							}
 						}
 					}
+					log(LogType.DEVICE_INITIALIZATION, "initializing bluetooth devices finished");
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
-				log(LogType.DEVICE_INITIALIZATION, "initializing bluetooth devices finished");
 			}
 		}
 
@@ -508,7 +514,8 @@ public class Vehicle {
 		@Override
 		public void onConnectedNotification(ConnectedNotification connectedNotification) {
 			Vehicle.this.connected = connectedNotification.isConnected();
-			
+			System.out.println(Vehicle.this.toShortString() 
+					+ (Vehicle.this.connected ? " " : " dis") +"connected");
 		}
 
 	}
