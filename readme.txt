@@ -9,5 +9,3 @@ To install tinyb.jar from the lib folder to the local maven repository use:
 mvn install:install-file@install-external
 
 
-
-

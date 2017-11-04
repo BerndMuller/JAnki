@@ -64,6 +64,7 @@ public class NotificationParser {
 			
 			// bytes[2] and bytes[3]) always 0, check this and return dummy
 			if (bytes[2] != 0 || bytes[3] != 0) {
+				// bei Thermo- und Nuke-Nachkauf bis Firmware-Update tatsächlich passiert
 				throw new RuntimeException("Firmware has changed. Update 'NotificationParser.parse().");
 			}
 			return new TransitionUpdate(vehicle, 0, null);

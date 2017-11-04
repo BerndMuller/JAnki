@@ -7,13 +7,16 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import tinyb.BluetoothDevice;
 import tinyb.BluetoothGattCharacteristic;
@@ -41,11 +44,10 @@ public class Vehicle {
 	private boolean connected;
 	
 	private Optional<Model> model;
-
+	
 	static {
-		AnkiBle.sleep(0); // dummy to initialize AnkiBle class
+		AnkiBle.init();
 	}
-
 
 	private Vehicle(BluetoothDevice bluetoothDevice) {
 		this.listeners = new ArrayList<>();
@@ -54,17 +56,7 @@ public class Vehicle {
 		model = ManufacturerData.modelFor(bluetoothDevice);
 	}
 
-	/**
-	 * Initializes JAnki.
-	 * 
-	 * You have to call init() before doing something else.
-	 * 
-	 */
-	public static void init() {
-		// dummy to run static initializer
-	}
 
-	
 	/**
 	 * Returns a list of all known vehicles.
 	 * 
@@ -251,28 +243,10 @@ public class Vehicle {
 		private static final String ANKI_READ_CHARACTERISTIC_UUID = "BE15BEE0-6186-407E-8381-0BD89C4D8DF4";
 		private static final String ANKI_WRITE_CHARACTERISTIC_UUID = "BE15BEE1-6186-407E-8381-0BD89C4D8DF4";
 
-		private static final ScheduledExecutorService scheduler;
-
-		@SuppressWarnings("unused")
-		private static final ScheduledFuture<?> discoveryScheduler;
-
-		@SuppressWarnings("unused")
-		private static final ScheduledFuture<?> initializationScheduler;
+		private static ScheduledExecutorService executor; // update devices asynchronously
 
 		private static final Map<LogType, Boolean> logToggles = new ConcurrentHashMap<>();
-
-		static {
-			System.out.println("JAnki gestartet");
-			scheduler = Executors.newScheduledThreadPool(1);
-			discoveryScheduler = scheduler.scheduleAtFixedRate(new AnkiBle().new DeviceDiscoverThread(), 0, 10, TimeUnit.SECONDS);
-			initializationScheduler = scheduler.scheduleAtFixedRate(new AnkiBle().new DeviceInitializationThread(), 5, 10, TimeUnit.SECONDS);
-			logToggles.put(LogType.DEVICE_DISCOVERY, Boolean.FALSE);
-			logToggles.put(LogType.DEVICE_INITIALIZATION, Boolean.FALSE);
-			logToggles.put(LogType.VALUE_NOTIFICATION, Boolean.FALSE);
-			logToggles.put(LogType.CONNECTED_NOTIFICATION, Boolean.FALSE);
-			Runtime.getRuntime().addShutdownHook(new Thread(() -> {AnkiBle.disconnectAll();}));
-		}
-
+		
 		/*
 		 * Lock für Tipp aus Tinyb-Dokumentation: Do not attempt to perform multiple connections simultaneously. Instead, serialize all
 		 * connection attempts, so that connection, service discovery and characteristic discovery for one peripheral are completed before
@@ -281,6 +255,20 @@ public class Vehicle {
 		 */
 		private static ReentrantLock lock = new ReentrantLock();
 
+
+		private static void init() {
+			System.out.println("Initializing JAnki. Please wait ...");
+			Stream.of(LogType.values()).forEach(value -> logToggles.put(value, Boolean.FALSE));
+			Runtime.getRuntime().addShutdownHook(new Thread(() -> {AnkiBle.disconnectAll();}));
+			AnkiBle.discoverDevices();
+			AnkiBle.initializeDevices();
+			System.out.println("Initializing JAnki finished");
+			executor = Executors.newScheduledThreadPool(1);
+			executor.scheduleAtFixedRate(() -> AnkiBle.updateDevices(), 5, 10, TimeUnit.SECONDS);
+		}
+
+		
+		
 		/**
 		 * Liefert die Write-Characteristics eines Autos.
 		 * 
@@ -296,7 +284,7 @@ public class Vehicle {
 		 * 
 		 */
 		private static void disconnectAll() {
-			System.out.println("Disconnect all devices");
+			System.out.println("Disconnecting all devices...");
 			Set<Entry<Vehicle, Long>> vehicles = Vehicle.vehicles.entrySet();
 			for (Entry<Vehicle, Long> entry : vehicles) {
 				Vehicle vehicle = entry.getKey();
@@ -346,7 +334,7 @@ public class Vehicle {
 							return readOrWriteCharacteristic;
 						}
 					} else {
-						System.out.println("connection failed");
+						System.out.println("no connection in 'characteristicFor()'");
 					}
 					sleep(100);
 				}
@@ -374,107 +362,127 @@ public class Vehicle {
 			}
 		}
 
-		class DeviceDiscoverThread extends Thread {
 
-			public void run() {
-				BluetoothManager manager = BluetoothManager.getBluetoothManager();
-				log(LogType.DEVICE_DISCOVERY, "discovering bluetooth devices ...");
-				lock.lock();
-				try {
-					manager.startDiscovery();
-					List<BluetoothDevice> list = manager.getDevices();
-					for (BluetoothDevice device : list) {
-						if (Arrays.asList(device.getUUIDs()).contains(ANKI_SERVICE_UUID.toLowerCase())) {
-							if (Vehicle.getVehicles().stream().map(v -> v.bluetoothDevice.getAddress()).anyMatch(mac -> mac.equals(device.getAddress()))) {
-								log(LogType.DEVICE_DISCOVERY, "vehicle " + device.getAddress() + " already known");
-								Vehicle.vehicles.replace(Vehicle.get(device.getAddress()), System.nanoTime());
-							} else {
-								Vehicle vehicle = new Vehicle(device);
-								Vehicle.vehicles.put(vehicle, System.nanoTime());
-								log(LogType.DEVICE_DISCOVERY, "vehicle " + device.getAddress() + " added");
-								vehicle.bluetoothDevice.enableConnectedNotifications(flag -> {
-									vehicle.onConnectedNotification(flag);
-								});
-							}
+		
+		/**
+		 * Discover Anki devices.
+		 * 
+		 * @return the number of discovered devices
+		 */
+		public static Integer discoverDevices() {
+			BluetoothManager manager = BluetoothManager.getBluetoothManager();
+			log(LogType.DEVICE_DISCOVERY, "discovering bluetooth devices ...");
+			lock.lock();
+			try {
+				manager.startDiscovery();
+				List<BluetoothDevice> list = manager.getDevices();
+				for (BluetoothDevice device : list) {
+					if (Arrays.asList(device.getUUIDs()).contains(ANKI_SERVICE_UUID.toLowerCase())) {
+						if (Vehicle.getVehicles().stream().map(v -> v.bluetoothDevice.getAddress()).anyMatch(mac -> mac.equals(device.getAddress()))) {
+							log(LogType.DEVICE_DISCOVERY, "vehicle " + device.getAddress() + " already known");
+							Vehicle.vehicles.replace(Vehicle.get(device.getAddress()), System.nanoTime());
+						} else {
+							Vehicle vehicle = new Vehicle(device);
+							Vehicle.vehicles.put(vehicle, System.nanoTime());
+							log(LogType.DEVICE_DISCOVERY, "vehicle " + device.getAddress() + " added");
+							vehicle.bluetoothDevice.enableConnectedNotifications(flag -> {
+								vehicle.onConnectedNotification(flag);
+							});
 						}
 					}
-					Thread.sleep(1000);
-					manager.stopDiscovery();
-				} catch (Exception e) {
-					e.printStackTrace();
-				} finally {
-					lock.unlock();
 				}
+				Thread.sleep(1000); // stopDiscovery() should not be called to early
+				manager.stopDiscovery();
+				return list.size();
+			} catch (Exception e) {
+				e.printStackTrace();
+				return 0;
+			} finally {
+				lock.unlock();
 				log(LogType.DEVICE_DISCOVERY, "discovering bluetooth devices finished");
 			}
 		}
 
+
+		
 		/**
 		 * Versucht alle Devices zu initialisieren.
 		 * <p>
 		 * Dazu gehört:
 		 * <ul>
-		 * 	<li> Read-Characteristic zu setzen
-		 * 	<li> Write-Characteristic zu setzen
+		 * 	<li> Read-Characteristic setzen
+		 * 	<li> Write-Characteristic setzen
 		 * 	<li> Value Notification registrieren
 		 * </ul>
 		 * 
-		 * Versucht Read- und Write-Characteristic der Devices zu setzen und Value-Notification zu registrieren.
-		 * 
+		 * @return 
 		 */
-		class DeviceInitializationThread extends Thread {
-
-			public void run() {
-				
-				try {
-					log(LogType.DEVICE_INITIALIZATION, "initializing bluetooth devices ...");
-					Set<Entry<Vehicle, Long>> vehicles = Vehicle.vehicles.entrySet();
-					for (Entry<Vehicle, Long> entry : vehicles) {
-						Vehicle vehicle = entry.getKey();
-						if (vehicle.writeCharacteristic == null) {
-							vehicle.writeCharacteristic = writeCharacteristicFor(vehicle.bluetoothDevice);
-							log(LogType.DEVICE_INITIALIZATION, "Write-Characteristic for " + vehicle + (vehicle == null ? " not " : "") + " set");
-
-						}
-						if (vehicle.readCharacteristic == null) {
-							vehicle.readCharacteristic = readCharacteristicFor(vehicle.bluetoothDevice);
-							log(LogType.DEVICE_INITIALIZATION, "Read-Characteristic for " + vehicle + (vehicle == null ? " not " : ""));
-							if (vehicle.readCharacteristic != null) {
-								vehicle.readCharacteristic.enableValueNotifications(bytes -> {
-									vehicle.onValueNotification(bytes);
-								});
-								log(LogType.DEVICE_INITIALIZATION, "Value notifications set for " + vehicle);
-							}
+		public static Integer initializeDevices() {
+			int numberOfInitializations = 0;
+			try {
+				log(LogType.DEVICE_INITIALIZATION, "initializing bluetooth devices ...");
+				Set<Entry<Vehicle, Long>> vehicles = Vehicle.vehicles.entrySet();
+				for (Entry<Vehicle, Long> entry : vehicles) {
+					Vehicle vehicle = entry.getKey();
+					if (vehicle.writeCharacteristic == null) {
+						vehicle.writeCharacteristic = writeCharacteristicFor(vehicle.bluetoothDevice);
+						log(LogType.DEVICE_INITIALIZATION, "Write-Characteristic for " + vehicle + (vehicle == null ? " not " : "") + " set");
+						numberOfInitializations++;
+					}
+					if (vehicle.readCharacteristic == null) {
+						vehicle.readCharacteristic = readCharacteristicFor(vehicle.bluetoothDevice);
+						log(LogType.DEVICE_INITIALIZATION, "Read-Characteristic for " + vehicle + (vehicle == null ? " not " : ""));
+						numberOfInitializations++;
+						if (vehicle.readCharacteristic != null) {
+							vehicle.readCharacteristic.enableValueNotifications(bytes -> {
+								vehicle.onValueNotification(bytes);
+							});
+							log(LogType.DEVICE_INITIALIZATION, "Value notifications set for " + vehicle);
 						}
 					}
-					log(LogType.DEVICE_INITIALIZATION, "initializing bluetooth devices finished");
-				} catch (Exception e) {
-					e.printStackTrace();
+				}
+				log(LogType.DEVICE_INITIALIZATION, "initializing bluetooth devices finished");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			return numberOfInitializations;
+		}
+		
+
+		
+		/**
+		 * Update Devices.
+		 * <p>
+		 * 
+		 * was wird gemacht
+		 * Verhältnis zu Multi-Threading, wird durch Executor aufgerufen, etc...
+		 * 
+		 * @author bernd
+		 *
+		 */
+		public static void updateDevices() {
+			log(LogType.DEVICE_UPDATE, "updating bluetooth devices");
+			// TODO Verhältnis discovered/initialized prüfen und sinnvoll darauf reagieren
+			try {
+				Integer numberOfDiscoveredDevices = CompletableFuture.supplyAsync(AnkiBle::discoverDevices).get(2000, TimeUnit.MILLISECONDS);
+				log(LogType.DEVICE_UPDATE, "number of discovered devices: " + numberOfDiscoveredDevices); 
+				Integer numberOfInitializedDevices = CompletableFuture.supplyAsync(AnkiBle::initializeDevices).get(5000, TimeUnit.MILLISECONDS);
+				log(LogType.DEVICE_UPDATE, "number of initialized devices: " + numberOfInitializedDevices);
+			} catch (InterruptedException | ExecutionException | TimeoutException e) {
+				e.printStackTrace();
+			}
+
+			// TODO braucht man das ? 
+			final long DEVICE_NOT_SEEN_NANO = 100_000_000_000L;
+			for (Entry<Vehicle, Long> entry : Vehicle.vehicles.entrySet()) {
+				if (System.nanoTime() - entry.getValue() > DEVICE_NOT_SEEN_NANO) {
+					// entfernen, falls lange nicht gesehen
+					System.out.println("sollte entfernt werden (nicht produktiv): " + entry.getKey());
+					// Vehicle.vehicles.remove(entry.getKey());
 				}
 			}
+			log(LogType.DEVICE_UPDATE, "updating bluetooth devices finished");
 		}
-
-		
-		@SuppressWarnings("unused")
-		class CarRemovalThread extends Thread {
-
-			private static final long DEVICE_NOT_SEEN_NANO = 100_000_000_000L;
-
-			
-			// TODO muss noch gemacht werden, noch nicht getestet
-			public void run() {
-				System.out.println("Removal thread running");
-					for (Entry<Vehicle, Long> entry : Vehicle.vehicles.entrySet()) {
-						if (System.nanoTime() - entry.getValue() > DEVICE_NOT_SEEN_NANO) {
-							// entfernen, falls 10 Such-Intervalle nicht da
-							System.out.println("entfernt: " + entry.getKey());
-							//Vehicle.vehicles.remove(entry.getKey());
-						}
-					}
-			}
-		}
-		
-		
 
 	}
 
@@ -485,7 +493,7 @@ public class Vehicle {
 	 *
 	 */
 	public enum LogType {
-		DEVICE_DISCOVERY, DEVICE_INITIALIZATION, VALUE_NOTIFICATION, CONNECTED_NOTIFICATION;
+		DEVICE_DISCOVERY, DEVICE_INITIALIZATION, DEVICE_UPDATE, VALUE_NOTIFICATION, CONNECTED_NOTIFICATION;
 	}
 	
 	public enum Model {

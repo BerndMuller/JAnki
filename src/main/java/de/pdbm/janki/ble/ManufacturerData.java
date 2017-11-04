@@ -1,5 +1,6 @@
 package de.pdbm.janki.ble;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 
@@ -27,9 +28,12 @@ public class ManufacturerData {
 		 * 
 		 */
 		
-		if (manufacturerDataMap.entrySet().size() != 1) {
+		if (manufacturerDataMap.entrySet().size() > 1) {
 			// if something changes, for example firmware update
-			System.out.println("Manufacturere Data Map hasn't size 1 anymore!");
+			System.out.println("Manufacturer Data Map hasn't size 1 anymore!");
+			for (Map.Entry<Short, byte[]> entry : manufacturerDataMap.entrySet()) {
+				System.out.println("Key: " + entry.getKey() + ", value: " + Arrays.toString(entry.getValue()));
+			}
 		}
 		byte[] bytes = manufacturerDataMap.get(new Integer(-4162).shortValue());
 		return bytes == null ? Optional.empty() : Optional.of(Vehicle.Model.getModel(bytes[1]));
