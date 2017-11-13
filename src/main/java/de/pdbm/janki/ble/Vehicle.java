@@ -2,6 +2,7 @@ package de.pdbm.janki.ble;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -9,6 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -39,7 +41,7 @@ public class Vehicle {
 
 	private BluetoothGattCharacteristic writeCharacteristic;
 
-	private List<NotificationListener> listeners;
+	private Collection<NotificationListener> listeners;
 	
 	private boolean connected;
 	
@@ -50,7 +52,7 @@ public class Vehicle {
 	}
 
 	private Vehicle(BluetoothDevice bluetoothDevice) {
-		this.listeners = new ArrayList<>();
+		this.listeners = new ConcurrentLinkedDeque<>();
 		this.bluetoothDevice = bluetoothDevice;
 		this.addNotificationListener(new DefaultConnectedNotificationListener());
 		model = ManufacturerData.modelFor(bluetoothDevice);
@@ -89,15 +91,21 @@ public class Vehicle {
 	 */
 	public void setSpeed(int speed) {
 		if (bluetoothDevice.getConnected()) {
-			writeCharacteristic.writeValue(Message.getSdkMode());
-			// TODO check if this is needed
-			AnkiBle.sleep(100);
 			writeCharacteristic.writeValue(Message.speedMessage((short) speed));
 		} else {
 			System.out.println("not connected");
 		}
 	}
 
+	
+	public void changeLane(float offset) {
+		if (bluetoothDevice.getConnected()) {
+			writeCharacteristic.writeValue(Message.setOffsetFromRoadCenter()); // kalibrieren
+			writeCharacteristic.writeValue(Message.changeLaneMessage((short) 1000, (short) 1000, offset));
+		} else {
+			System.out.println("not connected");
+		}
+	}
 	
 	/**
 	 * Returns true, if and only if. the vehicle is connected.
@@ -406,13 +414,15 @@ public class Vehicle {
 
 		
 		/**
-		 * Versucht alle Devices zu initialisieren.
+		 * Initialize all devices - at least try to.
+		 * 
 		 * <p>
-		 * Dazu gehört:
+		 * This incldes
 		 * <ul>
-		 * 	<li> Read-Characteristic setzen
-		 * 	<li> Write-Characteristic setzen
-		 * 	<li> Value Notification registrieren
+		 * 	<li> set read characteristic</li>
+		 * 	<li> set write characteristicsetzen </li>
+		 *  <li> set SDK modesetzen </li>
+		 * 	<li> register device for value notifications</li>
 		 * </ul>
 		 * 
 		 * @return 
@@ -428,6 +438,9 @@ public class Vehicle {
 						vehicle.writeCharacteristic = writeCharacteristicFor(vehicle.bluetoothDevice);
 						log(LogType.DEVICE_INITIALIZATION, "Write-Characteristic for " + vehicle + (vehicle == null ? " not " : "") + " set");
 						numberOfInitializations++;
+						if (vehicle.writeCharacteristic != null) {
+							vehicle.writeCharacteristic.writeValue(Message.getSdkMode());
+						}
 					}
 					if (vehicle.readCharacteristic == null) {
 						vehicle.readCharacteristic = readCharacteristicFor(vehicle.bluetoothDevice);
