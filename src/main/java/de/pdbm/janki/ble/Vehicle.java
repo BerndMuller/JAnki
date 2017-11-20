@@ -124,6 +124,15 @@ public class Vehicle {
 	public void addNotificationListener(NotificationListener listener) {
 		listeners.add(listener);
 	}
+	
+	/**
+	 * Remove a {@link NotificationListener}.
+	 * 
+	 * @param listener the listener to remove
+	 */
+	public void removeNotificationListener(NotificationListener listener) {
+		listeners.remove(listener);
+	}
 
 	public String getMacAddress() {
 		return bluetoothDevice.getAddress();
@@ -425,7 +434,7 @@ public class Vehicle {
 		 * 	<li> register device for value notifications</li>
 		 * </ul>
 		 * 
-		 * @return 
+		 * @return number of initialized devices
 		 */
 		public static Integer initializeDevices() {
 			int numberOfInitializations = 0;

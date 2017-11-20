@@ -18,6 +18,10 @@ import java.util.List;
  *   <li>{@link StartRoadPiece}</li>
  *   <li>{@link StraightRoadPiece}</li>
  * </ul>
+ * 
+ * <p>
+ * Experiments to define some nice Constants (for example START_ROAD_PIECE) failed because of
+ * some concurrency issues I was unable to clarify. 
  *  
  * @author bernd
  *
