@@ -302,11 +302,8 @@ public class Vehicle {
 		 */
 		private static void disconnectAll() {
 			System.out.println("Disconnecting all devices...");
-			Set<Entry<Vehicle, Long>> vehicles = Vehicle.vehicles.entrySet();
-			for (Entry<Vehicle, Long> entry : vehicles) {
-				Vehicle vehicle = entry.getKey();
-				vehicle.bluetoothDevice.disconnect();
-			}
+			//Vehicle.vehicles.entrySet().forEach(entry -> entry.getKey().bluetoothDevice.disconnect());
+			Vehicle.vehicles.entrySet().parallelStream().forEach(entry -> entry.getKey().bluetoothDevice.disconnect());
 		}
 
 		/**
