@@ -1,7 +1,5 @@
 package de.pdbm.janki.ble;
 
-import de.pdbm.janki.ble.roads.RoadPiece;
-
 /**
  * Represents information about a position update of a vehicle.
  * 
@@ -23,7 +21,7 @@ public final class PositionUpdate extends Notification {
 	
 	@Override
 	public String toString() {
-		return "PositionUpdate(" + String.format("%1$2s", "" + location) + ", " + roadPiece.getId() + ", " + ascendingLocations + ")";
+		return "PositionUpdate(" + String.format("%1$2s", "" + location) + ", " + roadPiece + ", " + ascendingLocations + ")";
 	}
 	
 

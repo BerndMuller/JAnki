@@ -1,7 +1,5 @@
 package de.pdbm.janki.ble;
 
-import de.pdbm.janki.ble.roads.RoadPiece;
-
 /**
  * Parser for BLE messages.
  * <p>
@@ -94,7 +92,7 @@ public class NotificationParser {
 			 * enthält immer identische Werte, nämlich 16 -65 31 73 
 			 */
 			
-			RoadPiece roadPiece = RoadPiece.getRoadPieceForId(bytes[3]);
+			RoadPiece roadPiece = RoadPiece.valueOf(bytes[3]);
 			return new PositionUpdate(vehicle, bytes[2], roadPiece, ! ((bytes[10] & 0x40) == 0x40));
 		}
 			
