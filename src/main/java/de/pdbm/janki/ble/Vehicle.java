@@ -440,6 +440,9 @@ public class Vehicle {
 				Set<Entry<Vehicle, Long>> vehicles = Vehicle.vehicles.entrySet();
 				for (Entry<Vehicle, Long> entry : vehicles) {
 					Vehicle vehicle = entry.getKey();
+					if (!vehicle.connected ) {
+						vehicle.bluetoothDevice.connect();
+					}
 					if (vehicle.writeCharacteristic == null) {
 						vehicle.writeCharacteristic = writeCharacteristicFor(vehicle.bluetoothDevice);
 						log(LogType.DEVICE_INITIALIZATION, "Write-Characteristic for " + vehicle + (vehicle == null ? " not " : "") + " set");
