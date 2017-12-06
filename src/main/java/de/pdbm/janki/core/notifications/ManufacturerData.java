@@ -1,9 +1,10 @@
-package de.pdbm.janki.ble;
+package de.pdbm.janki.core.notifications;
 
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 
+import de.pdbm.janki.core.Vehicle;
 import tinyb.BluetoothDevice;
 
 /**

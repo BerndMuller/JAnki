@@ -1,7 +1,12 @@
-package de.pdbm.janki.ble;
+package de.pdbm.janki.core.notifications;
 
 import org.junit.Assert;
 import org.junit.Test;
+
+import de.pdbm.janki.core.notifications.Notification;
+import de.pdbm.janki.core.notifications.NotificationParser;
+import de.pdbm.janki.core.notifications.PositionUpdate;
+import de.pdbm.janki.core.notifications.TransitionUpdate;
 
 public class NotificationParserTest {
 

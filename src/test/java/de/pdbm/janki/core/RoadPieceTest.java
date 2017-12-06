@@ -1,6 +1,8 @@
-package de.pdbm.janki.ble;
+package de.pdbm.janki.core;
 import org.junit.Assert;
 import org.junit.Test;
+
+import de.pdbm.janki.core.RoadPiece;
 
 public class RoadPieceTest {
 

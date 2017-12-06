@@ -1,4 +1,4 @@
-package de.pdbm.janki.ble;
+package de.pdbm.janki.core.notifications;
 
 import java.util.EventListener;
 
@@ -8,6 +8,6 @@ import java.util.EventListener;
  * @author bernd
  *
  */
-interface NotificationListener extends EventListener {
+public interface NotificationListener extends EventListener {
 
 }

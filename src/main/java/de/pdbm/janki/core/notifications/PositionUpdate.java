@@ -1,4 +1,7 @@
-package de.pdbm.janki.ble;
+package de.pdbm.janki.core.notifications;
+
+import de.pdbm.janki.core.RoadPiece;
+import de.pdbm.janki.core.Vehicle;
 
 /**
  * Represents information about a position update of a vehicle.

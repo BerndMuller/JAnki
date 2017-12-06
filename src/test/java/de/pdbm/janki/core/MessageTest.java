@@ -1,9 +1,11 @@
-package de.pdbm.janki.ble;
+package de.pdbm.janki.core;
 
 import java.util.Arrays;
 
 import org.junit.Assert;
 import org.junit.Test;
+
+import de.pdbm.janki.core.notifications.Message;
 
 public class MessageTest {
 

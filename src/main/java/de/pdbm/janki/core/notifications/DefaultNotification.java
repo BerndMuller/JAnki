@@ -1,4 +1,6 @@
-package de.pdbm.janki.ble;
+package de.pdbm.janki.core.notifications;
+
+import de.pdbm.janki.core.Vehicle;
 
 /**
  * The notification to be used if no convenient real subtype of Notification exists.

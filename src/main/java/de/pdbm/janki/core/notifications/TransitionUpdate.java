@@ -1,4 +1,7 @@
-package de.pdbm.janki.ble;
+package de.pdbm.janki.core.notifications;
+
+import de.pdbm.janki.core.RoadPiece;
+import de.pdbm.janki.core.Vehicle;
 
 /**
  * Represents information about a transition update of a vehicle, i.e. a road piece transition.

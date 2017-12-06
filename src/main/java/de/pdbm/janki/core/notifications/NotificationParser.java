@@ -1,4 +1,7 @@
-package de.pdbm.janki.ble;
+package de.pdbm.janki.core.notifications;
+
+import de.pdbm.janki.core.RoadPiece;
+import de.pdbm.janki.core.Vehicle;
 
 /**
  * Parser for BLE messages.
@@ -17,6 +20,7 @@ public class NotificationParser {
 	
 	static final byte POSITION_UPDATE   = 0x27; // decimal 39
 	static final byte TRANSITION_UPDATE = 0x29; // decimal 41
+	static final byte CHARGER_INFO      = 0x3f; // decimal 63
 	// am Ende immer {7, 54, ...} 0x36 und {3, 77, ...} 0x4D
 	
 	
@@ -95,7 +99,14 @@ public class NotificationParser {
 			RoadPiece roadPiece = RoadPiece.valueOf(bytes[3]);
 			return new PositionUpdate(vehicle, bytes[2], roadPiece, ! ((bytes[10] & 0x40) == 0x40));
 		}
-			
+		
+		case CHARGER_INFO: {
+			/* no Anki documentation found */
+			return new ChargerInfoNotification(vehicle,
+					new Boolean(bytes[2] != 0), new Boolean(bytes[3] != 0), 
+					new Boolean(bytes[4] != 0), new Boolean(bytes[5] != 0));
+		}
+		
 		default:
 			return new DefaultNotification(vehicle, bytes);
 		}

@@ -1,4 +1,4 @@
-package de.pdbm.janki.ble;
+package de.pdbm.janki.core.notifications;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,7 +19,7 @@ import java.io.IOException;
  * @author bernd
  *
  */
-class Message {
+public class Message {
 
 	private static final byte SET_SPEED = 0x24;
 	private static final byte CHANGE_LANE= 0x25;

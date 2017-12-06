@@ -27,4 +27,4 @@
  * @author bernd
  *
  */
-package de.pdbm.janki.ble;
+package de.pdbm.janki.core;

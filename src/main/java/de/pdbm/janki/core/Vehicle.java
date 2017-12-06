@@ -1,4 +1,4 @@
-package de.pdbm.janki.ble;
+package de.pdbm.janki.core;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,6 +20,20 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import de.pdbm.janki.core.notifications.ChargerInfoNotification;
+import de.pdbm.janki.core.notifications.ChargerInfoNotificationListener;
+import de.pdbm.janki.core.notifications.ConnectedNotification;
+import de.pdbm.janki.core.notifications.ConnectedNotificationListener;
+import de.pdbm.janki.core.notifications.DefaultNotification;
+import de.pdbm.janki.core.notifications.ManufacturerData;
+import de.pdbm.janki.core.notifications.Message;
+import de.pdbm.janki.core.notifications.Notification;
+import de.pdbm.janki.core.notifications.NotificationListener;
+import de.pdbm.janki.core.notifications.NotificationParser;
+import de.pdbm.janki.core.notifications.PositionUpdate;
+import de.pdbm.janki.core.notifications.PositionUpdateListener;
+import de.pdbm.janki.core.notifications.TransitionUpdate;
+import de.pdbm.janki.core.notifications.TransitionUpdateListener;
 import tinyb.BluetoothDevice;
 import tinyb.BluetoothGattCharacteristic;
 import tinyb.BluetoothGattService;
@@ -45,6 +59,8 @@ public class Vehicle {
 	
 	private boolean connected;
 	
+	private boolean onCharger;
+	
 	private Optional<Model> model;
 	
 	static {
@@ -55,6 +71,7 @@ public class Vehicle {
 		this.listeners = new ConcurrentLinkedDeque<>();
 		this.bluetoothDevice = bluetoothDevice;
 		this.addNotificationListener(new DefaultConnectedNotificationListener());
+		this.addNotificationListener(new DefaultChargerInfoNotificationListener());
 		model = ManufacturerData.modelFor(bluetoothDevice);
 	}
 
@@ -108,7 +125,7 @@ public class Vehicle {
 	}
 	
 	/**
-	 * Returns true, if and only if. the vehicle is connected.
+	 * Returns true, if and only if, the vehicle is connected.
 	 * 
 	 * @return true, if vehicle is connected, otherwise false 
 	 */
@@ -116,6 +133,12 @@ public class Vehicle {
 		return connected;
 	}
 
+	
+	public boolean isOnCharger() {
+		return onCharger;
+	}
+	
+	
 	/**
 	 * Add a {@link NotificationListener}.
 	 * 
@@ -140,14 +163,6 @@ public class Vehicle {
 
 	public Optional<Model> getModel() {
 		return model;
-	}
-
-	public static void toggleAllLogs() {
-		Arrays.stream(LogType.values()).forEach(t -> toggleLog(t));
-	}
-	
-	public static void toggleLog(LogType toggle) {
-		AnkiBle.toggleLog(toggle);
 	}
 
 	@Override
@@ -181,7 +196,7 @@ public class Vehicle {
 	 * @param bytes The BLE message bytes
 	 */
 	private void onValueNotification(byte[] bytes) {
-		AnkiBle.log(LogType.VALUE_NOTIFICATION, "Value notification: " + Arrays.toString(bytes));
+		Logger.log(LogType.VALUE_NOTIFICATION, "Value notification: " + Arrays.toString(bytes));
 		
 		try {
 			Notification notification = NotificationParser.parse(this, bytes);
@@ -199,8 +214,15 @@ public class Vehicle {
 						((TransitionUpdateListener) notificationListener).onTransitionUpdate(tu);
 					}
 				}
+			} else if (notification instanceof ChargerInfoNotification) {
+				ChargerInfoNotification cin = (ChargerInfoNotification) notification;
+				for (NotificationListener notificationListener : listeners) {
+					if (notificationListener instanceof ChargerInfoNotificationListener) {
+						((ChargerInfoNotificationListener) notificationListener).onChargerInfoNotification(cin);
+					}
+				}
 			} else if (notification instanceof DefaultNotification) {
-				AnkiBle.log(LogType.VALUE_NOTIFICATION, "Default notification: " + Arrays.toString(bytes) + ". Nothing happens.");
+				Logger.log(LogType.VALUE_NOTIFICATION, "Default notification: " + Arrays.toString(bytes) + ". Nothing happens.");
 			} else { // TODO is it ok to throw exception in try ?
 				throw new IllegalArgumentException("Unknown value notification message");
 			}
@@ -218,7 +240,7 @@ public class Vehicle {
 	 */
 
 	private void onConnectedNotification(boolean flag) {
-		AnkiBle.log(LogType.CONNECTED_NOTIFICATION, "Connected notification: " + flag);
+		Logger.log(LogType.CONNECTED_NOTIFICATION, "Connected notification: " + flag);
 		try {
 			ConnectedNotification cn  = new ConnectedNotification(this, flag);
 			for (NotificationListener notificationListener : listeners) {
@@ -366,18 +388,6 @@ public class Vehicle {
 			}
 		}
 
-		public static void toggleLog(LogType toggle) {
-			logToggles.put(toggle, !logToggles.get(toggle));
-		}
-
-		private static void log(LogType toggle, String text) {
-			if (logToggles.get(toggle)) {
-				System.out.println("AnkiBle: " + text);
-			}
-		}
-
-
-		
 		/**
 		 * Discover Anki devices.
 		 * 
@@ -385,7 +395,7 @@ public class Vehicle {
 		 */
 		public static Integer discoverDevices() {
 			BluetoothManager manager = BluetoothManager.getBluetoothManager();
-			log(LogType.DEVICE_DISCOVERY, "discovering bluetooth devices ...");
+			Logger.log(LogType.DEVICE_DISCOVERY, "discovering bluetooth devices ...");
 			lock.lock();
 			try {
 				manager.startDiscovery();
@@ -393,12 +403,12 @@ public class Vehicle {
 				for (BluetoothDevice device : list) {
 					if (Arrays.asList(device.getUUIDs()).contains(ANKI_SERVICE_UUID.toLowerCase())) {
 						if (Vehicle.getVehicles().stream().map(v -> v.bluetoothDevice.getAddress()).anyMatch(mac -> mac.equals(device.getAddress()))) {
-							log(LogType.DEVICE_DISCOVERY, "vehicle " + device.getAddress() + " already known");
+							Logger.log(LogType.DEVICE_DISCOVERY, "vehicle " + device.getAddress() + " already known");
 							Vehicle.vehicles.replace(Vehicle.get(device.getAddress()), System.nanoTime());
 						} else {
 							Vehicle vehicle = new Vehicle(device);
 							Vehicle.vehicles.put(vehicle, System.nanoTime());
-							log(LogType.DEVICE_DISCOVERY, "vehicle " + device.getAddress() + " added");
+							Logger.log(LogType.DEVICE_DISCOVERY, "vehicle " + device.getAddress() + " added");
 							vehicle.bluetoothDevice.enableConnectedNotifications(flag -> {
 								vehicle.onConnectedNotification(flag);
 							});
@@ -413,7 +423,7 @@ public class Vehicle {
 				return 0;
 			} finally {
 				lock.unlock();
-				log(LogType.DEVICE_DISCOVERY, "discovering bluetooth devices finished");
+				Logger.log(LogType.DEVICE_DISCOVERY, "discovering bluetooth devices finished");
 			}
 		}
 
@@ -436,7 +446,7 @@ public class Vehicle {
 		public static Integer initializeDevices() {
 			int numberOfInitializations = 0;
 			try {
-				log(LogType.DEVICE_INITIALIZATION, "initializing bluetooth devices ...");
+				Logger.log(LogType.DEVICE_INITIALIZATION, "initializing bluetooth devices ...");
 				Set<Entry<Vehicle, Long>> vehicles = Vehicle.vehicles.entrySet();
 				for (Entry<Vehicle, Long> entry : vehicles) {
 					Vehicle vehicle = entry.getKey();
@@ -445,7 +455,7 @@ public class Vehicle {
 					}
 					if (vehicle.writeCharacteristic == null) {
 						vehicle.writeCharacteristic = writeCharacteristicFor(vehicle.bluetoothDevice);
-						log(LogType.DEVICE_INITIALIZATION, "Write-Characteristic for " + vehicle + (vehicle == null ? " not " : "") + " set");
+						Logger.log(LogType.DEVICE_INITIALIZATION, "Write-Characteristic for " + vehicle + (vehicle == null ? " not " : "") + " set");
 						numberOfInitializations++;
 						if (vehicle.writeCharacteristic != null) {
 							vehicle.writeCharacteristic.writeValue(Message.getSdkMode());
@@ -453,17 +463,17 @@ public class Vehicle {
 					}
 					if (vehicle.readCharacteristic == null) {
 						vehicle.readCharacteristic = readCharacteristicFor(vehicle.bluetoothDevice);
-						log(LogType.DEVICE_INITIALIZATION, "Read-Characteristic for " + vehicle + (vehicle == null ? " not " : ""));
+						Logger.log(LogType.DEVICE_INITIALIZATION, "Read-Characteristic for " + vehicle + (vehicle == null ? " not " : ""));
 						numberOfInitializations++;
 						if (vehicle.readCharacteristic != null) {
 							vehicle.readCharacteristic.enableValueNotifications(bytes -> {
 								vehicle.onValueNotification(bytes);
 							});
-							log(LogType.DEVICE_INITIALIZATION, "Value notifications set for " + vehicle);
+							Logger.log(LogType.DEVICE_INITIALIZATION, "Value notifications set for " + vehicle);
 						}
 					}
 				}
-				log(LogType.DEVICE_INITIALIZATION, "initializing bluetooth devices finished");
+				Logger.log(LogType.DEVICE_INITIALIZATION, "initializing bluetooth devices finished");
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -483,13 +493,13 @@ public class Vehicle {
 		 *
 		 */
 		public static void updateDevices() {
-			log(LogType.DEVICE_UPDATE, "updating bluetooth devices");
+			Logger.log(LogType.DEVICE_UPDATE, "updating bluetooth devices");
 			// TODO Verhältnis discovered/initialized prüfen und sinnvoll darauf reagieren
 			try {
 				Integer numberOfDiscoveredDevices = CompletableFuture.supplyAsync(AnkiBle::discoverDevices).get(2000, TimeUnit.MILLISECONDS);
-				log(LogType.DEVICE_UPDATE, "number of discovered devices: " + numberOfDiscoveredDevices); 
+				Logger.log(LogType.DEVICE_UPDATE, "number of discovered devices: " + numberOfDiscoveredDevices); 
 				Integer numberOfInitializedDevices = CompletableFuture.supplyAsync(AnkiBle::initializeDevices).get(5000, TimeUnit.MILLISECONDS);
-				log(LogType.DEVICE_UPDATE, "number of initialized devices: " + numberOfInitializedDevices);
+				Logger.log(LogType.DEVICE_UPDATE, "number of initialized devices: " + numberOfInitializedDevices);
 			} catch (InterruptedException | ExecutionException | TimeoutException e) {
 				e.printStackTrace();
 			}
@@ -503,20 +513,11 @@ public class Vehicle {
 					// Vehicle.vehicles.remove(entry.getKey());
 				}
 			}
-			log(LogType.DEVICE_UPDATE, "updating bluetooth devices finished");
+			Logger.log(LogType.DEVICE_UPDATE, "updating bluetooth devices finished");
 		}
 
 	}
 
-	/**
-	 * Enum to describe the log type.
-	 * 
-	 * @author bernd
-	 *
-	 */
-	public enum LogType {
-		DEVICE_DISCOVERY, DEVICE_INITIALIZATION, DEVICE_UPDATE, VALUE_NOTIFICATION, CONNECTED_NOTIFICATION;
-	}
 	
 	public enum Model {
 		
@@ -529,7 +530,7 @@ public class Vehicle {
 			this.id = id;
 		}
 		
-		static Model getModel(int id) {
+		public static Model getModel(int id) {
 			for (int i = 0; i < values().length; i++) {
 				if (values()[i].id == id) {
 					return values()[i];
@@ -539,6 +540,7 @@ public class Vehicle {
 		}
 	}
 	
+		
 	private class DefaultConnectedNotificationListener implements ConnectedNotificationListener {
 
 		@Override
@@ -549,4 +551,16 @@ public class Vehicle {
 		}
 
 	}
+	
+	private class DefaultChargerInfoNotificationListener implements ChargerInfoNotificationListener {
+
+		@Override
+		public void onChargerInfoNotification(ChargerInfoNotification chargerInfoNotification) {
+			Vehicle.this.onCharger = chargerInfoNotification.isOnCharger();
+			System.out.println(Vehicle.this.toShortString() 
+					+ (Vehicle.this.onCharger ? " on " : " not on ") +"charger");
+		}
+		
+	}
+	
 }
