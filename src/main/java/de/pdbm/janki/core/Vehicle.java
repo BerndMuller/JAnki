@@ -56,13 +56,13 @@ public class Vehicle {
 	private BluetoothGattCharacteristic writeCharacteristic;
 
 	private Collection<NotificationListener> listeners;
-	
+
 	private boolean connected;
-	
+
 	private boolean onCharger;
-	
+
 	private Optional<Model> model;
-	
+
 	static {
 		AnkiBle.init();
 	}
@@ -75,7 +75,6 @@ public class Vehicle {
 		model = ManufacturerData.modelFor(bluetoothDevice);
 	}
 
-
 	/**
 	 * Returns a list of all known vehicles.
 	 * 
@@ -87,7 +86,6 @@ public class Vehicle {
 		return new ArrayList<>(vehicles.keySet());
 	}
 
-	
 	/**
 	 * Returns the vehicle for this MAC address.
 	 * 
@@ -100,7 +98,6 @@ public class Vehicle {
 		return any.get();
 	}
 
-	
 	/**
 	 * Sets the speed of this vehicle.
 	 * 
@@ -114,7 +111,6 @@ public class Vehicle {
 		}
 	}
 
-	
 	public void changeLane(float offset) {
 		if (bluetoothDevice.getConnected()) {
 			writeCharacteristic.writeValue(Message.setOffsetFromRoadCenter()); // kalibrieren
@@ -123,7 +119,7 @@ public class Vehicle {
 			System.out.println("not connected");
 		}
 	}
-	
+
 	/**
 	 * Returns true, if and only if, the vehicle is connected.
 	 * 
@@ -133,12 +129,10 @@ public class Vehicle {
 		return connected;
 	}
 
-	
 	public boolean isOnCharger() {
 		return onCharger;
 	}
-	
-	
+
 	/**
 	 * Add a {@link NotificationListener}.
 	 * 
@@ -147,7 +141,7 @@ public class Vehicle {
 	public void addNotificationListener(NotificationListener listener) {
 		listeners.add(listener);
 	}
-	
+
 	/**
 	 * Remove a {@link NotificationListener}.
 	 * 
@@ -177,16 +171,14 @@ public class Vehicle {
 
 	@Override
 	public String toString() {
-		return (model.isPresent() ? model.get().toString()+"(" : "Vehicle(")
-				+ bluetoothDevice.getAddress() + ")" 
-				+ ", connected " + (connected ? "\u2718" : "-") 
-				+ ", read " + (readCharacteristic == null ? "-" : "\u2718") 
-				+ ", write " + (writeCharacteristic == null ? "-" : "\u2718") 
-				+ ", listeners =" + listeners.stream().map(l -> l.getClass().getSimpleName()).collect(Collectors.toList());
+		return (model.isPresent() ? model.get().toString() + "(" : "Vehicle(") + bluetoothDevice.getAddress() + ")" + ", connected "
+				+ (connected ? "\u2718" : "-") + ", on charger " + (onCharger ? "\u2718" : "-") + ", read " + (readCharacteristic == null ? "-" : "\u2718")
+				+ ", write " + (writeCharacteristic == null ? "-" : "\u2718") + ", listeners ="
+				+ listeners.stream().map(l -> l.getClass().getSimpleName()).map(Vehicle::upperCaseChars).collect(Collectors.toList());
 	}
 
 	public String toShortString() {
-		return (model.isPresent() ? model.get().toString()+"(" : "Vehicle(") + bluetoothDevice.getAddress() + ")"; 
+		return (model.isPresent() ? model.get().toString() + "(" : "Vehicle(") + bluetoothDevice.getAddress() + ")";
 
 	}
 
@@ -197,7 +189,7 @@ public class Vehicle {
 	 */
 	private void onValueNotification(byte[] bytes) {
 		Logger.log(LogType.VALUE_NOTIFICATION, "Value notification: " + Arrays.toString(bytes));
-		
+
 		try {
 			Notification notification = NotificationParser.parse(this, bytes);
 			if (notification instanceof PositionUpdate) {
@@ -227,12 +219,11 @@ public class Vehicle {
 				throw new IllegalArgumentException("Unknown value notification message");
 			}
 		} catch (Exception e) {
-			// try-catch to prevent swallowing thrown exception by TinyB, which calls this method 
+			// try-catch to prevent swallowing thrown exception by TinyB, which calls this method
 			e.printStackTrace();
 		}
 	}
 
-	
 	/**
 	 * Method called by BLE system for connected notifications.
 	 * 
@@ -242,20 +233,24 @@ public class Vehicle {
 	private void onConnectedNotification(boolean flag) {
 		Logger.log(LogType.CONNECTED_NOTIFICATION, "Connected notification: " + flag);
 		try {
-			ConnectedNotification cn  = new ConnectedNotification(this, flag);
+			ConnectedNotification cn = new ConnectedNotification(this, flag);
 			for (NotificationListener notificationListener : listeners) {
 				if (notificationListener instanceof ConnectedNotificationListener) {
 					((ConnectedNotificationListener) notificationListener).onConnectedNotification(cn);
 				}
 			}
 		} catch (Exception e) {
-			// try-catch to prevent swallowing thrown exception by TinyB, which calls this method 
+			// try-catch to prevent swallowing thrown exception by TinyB, which calls this method
 			e.printStackTrace();
 		}
 	}
-	
-	
-	
+
+	private static String upperCaseChars(String str) {
+		StringBuilder sb = new StringBuilder();
+		str.codePoints().filter(ch -> Character.isUpperCase(ch)).forEach(sb::appendCodePoint);
+		return sb.toString();
+	}
+
 	/**
 	 * Class hiding the BLE stuff.
 	 * <p>
@@ -285,7 +280,7 @@ public class Vehicle {
 		private static ScheduledExecutorService executor; // update devices asynchronously
 
 		private static final Map<LogType, Boolean> logToggles = new ConcurrentHashMap<>();
-		
+
 		/*
 		 * Lock für Tipp aus Tinyb-Dokumentation: Do not attempt to perform multiple connections simultaneously. Instead, serialize all
 		 * connection attempts, so that connection, service discovery and characteristic discovery for one peripheral are completed before
@@ -294,11 +289,12 @@ public class Vehicle {
 		 */
 		private static ReentrantLock lock = new ReentrantLock();
 
-
 		private static void init() {
 			System.out.println("Initializing JAnki. Please wait ...");
 			Stream.of(LogType.values()).forEach(value -> logToggles.put(value, Boolean.FALSE));
-			Runtime.getRuntime().addShutdownHook(new Thread(() -> {AnkiBle.disconnectAll();}));
+			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+				AnkiBle.disconnectAll();
+			}));
 			AnkiBle.discoverDevices();
 			AnkiBle.initializeDevices();
 			System.out.println("Initializing JAnki finished");
@@ -306,10 +302,8 @@ public class Vehicle {
 			executor.scheduleAtFixedRate(() -> AnkiBle.updateDevices(), 5, 10, TimeUnit.SECONDS);
 		}
 
-		
-		
 		/**
-		 * Liefert die Write-Characteristics eines Autos.
+		 * Returns the write characteristics of a hardware vehicle.
 		 * 
 		 * @param device device to get write characteristics for
 		 * @return the write characteristics of the device
@@ -318,18 +312,9 @@ public class Vehicle {
 			return characteristicFor(ANKI_WRITE_CHARACTERISTIC_UUID, device);
 		}
 
-		/**
-		 * Disconnect all Bluetooth devices.
-		 * 
-		 */
-		private static void disconnectAll() {
-			System.out.println("Disconnecting all devices...");
-			//Vehicle.vehicles.entrySet().forEach(entry -> entry.getKey().bluetoothDevice.disconnect());
-			Vehicle.vehicles.entrySet().parallelStream().forEach(entry -> entry.getKey().bluetoothDevice.disconnect());
-		}
 
 		/**
-		 * Liefert die Read-Characteristics eines Autos.
+		 * Returns the read characteristics of a hardware vehicle.
 		 * 
 		 * @param device device to get read characteristics for
 		 * @return the read characteristics of the device
@@ -338,8 +323,10 @@ public class Vehicle {
 			return characteristicFor(ANKI_READ_CHARACTERISTIC_UUID, device);
 		}
 
+		
+		
 		/**
-		 * Liefert Read- oder Write-Characteristic eines Autos.
+		 * Returns the read or write characteristics of a hardware vehicle.
 		 * 
 		 * @param characteristicUUID UUID of read or write characteristic
 		 * @param device the device for which the characteristic is set 
@@ -389,6 +376,18 @@ public class Vehicle {
 		}
 
 		/**
+		 * Disconnect all Bluetooth devices.
+		 * 
+		 */
+		private static void disconnectAll() {
+			System.out.println("Disconnecting all devices...");
+			// Vehicle.vehicles.entrySet().forEach(entry -> entry.getKey().bluetoothDevice.disconnect());
+			Vehicle.vehicles.entrySet().parallelStream().forEach(entry -> entry.getKey().bluetoothDevice.disconnect());
+		}
+
+		
+		
+		/**
 		 * Discover Anki devices.
 		 * 
 		 * @return the number of discovered devices
@@ -427,8 +426,6 @@ public class Vehicle {
 			}
 		}
 
-
-		
 		/**
 		 * Initialize all devices - at least try to.
 		 * 
@@ -450,7 +447,7 @@ public class Vehicle {
 				Set<Entry<Vehicle, Long>> vehicles = Vehicle.vehicles.entrySet();
 				for (Entry<Vehicle, Long> entry : vehicles) {
 					Vehicle vehicle = entry.getKey();
-					if (!vehicle.connected ) {
+					if (!vehicle.connected) {
 						vehicle.bluetoothDevice.connect();
 					}
 					if (vehicle.writeCharacteristic == null) {
@@ -479,15 +476,17 @@ public class Vehicle {
 			}
 			return numberOfInitializations;
 		}
-		
 
-		
 		/**
 		 * Update Devices.
 		 * <p>
 		 * 
-		 * was wird gemacht
-		 * Verhältnis zu Multi-Threading, wird durch Executor aufgerufen, etc...
+		 * This method should be called repeatedly to
+		 * <ul>
+		 * 	<li> discover new devices</li>
+		 * 	<li> initialize known devices</li>
+		 *  <li> remove devices which haven't be seen for a long time</li>
+		 * </ul>
 		 * 
 		 * @author bernd
 		 *
@@ -497,19 +496,17 @@ public class Vehicle {
 			// TODO Verhältnis discovered/initialized prüfen und sinnvoll darauf reagieren
 			try {
 				Integer numberOfDiscoveredDevices = CompletableFuture.supplyAsync(AnkiBle::discoverDevices).get(2000, TimeUnit.MILLISECONDS);
-				Logger.log(LogType.DEVICE_UPDATE, "number of discovered devices: " + numberOfDiscoveredDevices); 
+				Logger.log(LogType.DEVICE_UPDATE, "number of discovered devices: " + numberOfDiscoveredDevices);
 				Integer numberOfInitializedDevices = CompletableFuture.supplyAsync(AnkiBle::initializeDevices).get(5000, TimeUnit.MILLISECONDS);
 				Logger.log(LogType.DEVICE_UPDATE, "number of initialized devices: " + numberOfInitializedDevices);
 			} catch (InterruptedException | ExecutionException | TimeoutException e) {
 				e.printStackTrace();
 			}
-
-			// TODO braucht man das ? 
+			// TODO check: do we need this:
 			final long DEVICE_NOT_SEEN_NANO = 100_000_000_000L;
 			for (Entry<Vehicle, Long> entry : Vehicle.vehicles.entrySet()) {
 				if (System.nanoTime() - entry.getValue() > DEVICE_NOT_SEEN_NANO) {
-					// entfernen, falls lange nicht gesehen
-					System.out.println("sollte entfernt werden (nicht produktiv): " + entry.getKey());
+					System.out.println("should be removed (not productive): " + entry.getKey());
 					// Vehicle.vehicles.remove(entry.getKey());
 				}
 			}
@@ -518,18 +515,17 @@ public class Vehicle {
 
 	}
 
-	
 	public enum Model {
-		
-		KOURAI(0x01), BOSON(0x02), RHO(0x03), KATAL(0x04), HADION(0x05), SPEKTRIX(0x06), CORAX(0x07), 
-		GROUNDSHOCK(0x08), SKULL(0x09), THERMO(0x0a), NUKE(0x0b), GUARDIAN(0x0d), BIGBANG(0x0e);
+
+		KOURAI(0x01), BOSON(0x02), RHO(0x03), KATAL(0x04), HADION(0x05), SPEKTRIX(0x06), CORAX(0x07), GROUNDSHOCK(0x08), SKULL(0x09), THERMO(0x0a), NUKE(
+				0x0b), GUARDIAN(0x0d), BIGBANG(0x0e);
 
 		private int id;
 
 		private Model(int id) {
 			this.id = id;
 		}
-		
+
 		public static Model getModel(int id) {
 			for (int i = 0; i < values().length; i++) {
 				if (values()[i].id == id) {
@@ -539,28 +535,25 @@ public class Vehicle {
 			throw new IllegalArgumentException("Unbekannte Auto-Id");
 		}
 	}
-	
-		
+
 	private class DefaultConnectedNotificationListener implements ConnectedNotificationListener {
 
 		@Override
 		public void onConnectedNotification(ConnectedNotification connectedNotification) {
 			Vehicle.this.connected = connectedNotification.isConnected();
-			System.out.println(Vehicle.this.toShortString() 
-					+ (Vehicle.this.connected ? " " : " dis") +"connected");
+			System.out.println(Vehicle.this.toShortString() + (Vehicle.this.connected ? " " : " dis") + "connected");
 		}
 
 	}
-	
+
 	private class DefaultChargerInfoNotificationListener implements ChargerInfoNotificationListener {
 
 		@Override
 		public void onChargerInfoNotification(ChargerInfoNotification chargerInfoNotification) {
 			Vehicle.this.onCharger = chargerInfoNotification.isOnCharger();
-			System.out.println(Vehicle.this.toShortString() 
-					+ (Vehicle.this.onCharger ? " on " : " not on ") +"charger");
+			System.out.println(Vehicle.this.toShortString() + (Vehicle.this.onCharger ? " on " : " not on ") + "charger");
 		}
-		
+
 	}
-	
+
 }
