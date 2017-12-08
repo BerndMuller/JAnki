@@ -541,7 +541,7 @@ public class Vehicle {
 		@Override
 		public void onConnectedNotification(ConnectedNotification connectedNotification) {
 			Vehicle.this.connected = connectedNotification.isConnected();
-			System.out.println(Vehicle.this.toShortString() + (Vehicle.this.connected ? " " : " dis") + "connected");
+			Logger.log(LogType.CONNECTED_NOTIFICATION, Vehicle.this.toShortString() + (Vehicle.this.connected ? " " : " dis") + "connected");
 		}
 
 	}
@@ -551,7 +551,7 @@ public class Vehicle {
 		@Override
 		public void onChargerInfoNotification(ChargerInfoNotification chargerInfoNotification) {
 			Vehicle.this.onCharger = chargerInfoNotification.isOnCharger();
-			System.out.println(Vehicle.this.toShortString() + (Vehicle.this.onCharger ? " on " : " not on ") + "charger");
+			Logger.log(LogType.VALUE_NOTIFICATION, Vehicle.this.toShortString() + (Vehicle.this.onCharger ? " on " : " not on ") + "charger");
 		}
 
 	}
