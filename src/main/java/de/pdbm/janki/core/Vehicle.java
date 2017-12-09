@@ -57,6 +57,8 @@ public class Vehicle {
 
 	private Collection<NotificationListener> listeners;
 
+	private int speed;
+
 	private boolean connected;
 
 	private boolean onCharger;
@@ -106,6 +108,7 @@ public class Vehicle {
 	public void setSpeed(int speed) {
 		if (bluetoothDevice.getConnected()) {
 			writeCharacteristic.writeValue(Message.speedMessage((short) speed));
+			this.speed = speed;
 		} else {
 			System.out.println("not connected");
 		}
@@ -159,6 +162,10 @@ public class Vehicle {
 		return model;
 	}
 
+	public int getSpeed() {
+		return speed;
+	}
+
 	@Override
 	public int hashCode() {
 		return bluetoothDevice.hashCode();
@@ -171,10 +178,15 @@ public class Vehicle {
 
 	@Override
 	public String toString() {
-		return (model.isPresent() ? model.get().toString() + "(" : "Vehicle(") + bluetoothDevice.getAddress() + ")" + ", connected "
-				+ (connected ? "\u2718" : "-") + ", on charger " + (onCharger ? "\u2718" : "-") + ", read " + (readCharacteristic == null ? "-" : "\u2718")
-				+ ", write " + (writeCharacteristic == null ? "-" : "\u2718") + ", listeners ="
-				+ listeners.stream().map(l -> l.getClass().getSimpleName()).map(Vehicle::upperCaseChars).collect(Collectors.toList());
+		// @formatter:off
+		return toShortString()
+				+ ", connected " + (connected ? "\u2718" : "-") 
+				+ ", speed " + speed
+				+ ", on charger " + (onCharger ? "\u2718" : "-") 
+				+ ", read " + (readCharacteristic == null ? "-" : "\u2718")
+				+ ", write " + (writeCharacteristic == null ? "-" : "\u2718") 
+				+ ", listeners =" + listeners.stream().map(l -> l.getClass().getSimpleName()).map(Vehicle::upperCaseChars).collect(Collectors.toList());
+		// @formatter:on
 	}
 
 	public String toShortString() {
@@ -312,7 +324,6 @@ public class Vehicle {
 			return characteristicFor(ANKI_WRITE_CHARACTERISTIC_UUID, device);
 		}
 
-
 		/**
 		 * Returns the read characteristics of a hardware vehicle.
 		 * 
@@ -323,8 +334,6 @@ public class Vehicle {
 			return characteristicFor(ANKI_READ_CHARACTERISTIC_UUID, device);
 		}
 
-		
-		
 		/**
 		 * Returns the read or write characteristics of a hardware vehicle.
 		 * 
@@ -385,8 +394,6 @@ public class Vehicle {
 			Vehicle.vehicles.entrySet().parallelStream().forEach(entry -> entry.getKey().bluetoothDevice.disconnect());
 		}
 
-		
-		
 		/**
 		 * Discover Anki devices.
 		 * 

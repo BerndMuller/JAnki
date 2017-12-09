@@ -1,4 +1,3 @@
 Prüfen, wie weit ein change lane für genau eine Spur sein muss, und ob man
 immer auf 0 kalibrieren muss.
 
-Vehicle mit Property speed

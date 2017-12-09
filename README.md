@@ -6,6 +6,9 @@ A simple library to use Anki Overdrive with Java
 
 The class ``de.pdbm.janki.core.Vehicle`` is JAnki's public API and should be your starting point.
 
+If you want to start without programming first, give ``de.pdbm.janki.cli.Main`` a try. This
+class can be run with shell script ``run-cli.sh``.
+
 ### Prerequisites
 
 JAnki uses TinyB <https://github.com/intel-iot-devkit/tinyb> which you have to install.
