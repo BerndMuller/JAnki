@@ -137,6 +137,21 @@ public class Vehicle {
 	}
 
 	/**
+	 * A vehicle is ready to start, if it
+	 * <ul>
+	 *   <li>is connected</li>
+	 *   <li>and not on charger</li>
+	 *   <li>and write characteristic is set</li>
+	 *   <li>and read characteristic is set</li>
+	 * </ul>
+	 *  
+	 * @return true, if vehicle ready to start, false otherwise
+	 */
+	public boolean isReadyToStart() {
+		return connected && !onCharger && writeCharacteristic != null && readCharacteristic != null;
+	}
+	
+	/**
 	 * Add a {@link NotificationListener}.
 	 * 
 	 * @param listener the listener to add

@@ -49,7 +49,7 @@
 					<header>JAnki</header>
 					<doctitle>JAnki</doctitle>
 					<footer>Copyright &#169; Bernd Müller</footer>
-					<!-- <show>private</show> -->
+					<show>private</show>
 					<show>private</show>
 				</configuration>
 			</plugin>
