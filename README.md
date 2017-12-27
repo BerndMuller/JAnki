@@ -39,5 +39,4 @@ mvn clean install
 
 ## License
 
-ich überlege noch
-
+See the [LICENSE](LICENSE.txt) file for license rights and limitations (MIT).

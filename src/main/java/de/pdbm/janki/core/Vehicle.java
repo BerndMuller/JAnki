@@ -113,6 +113,10 @@ public class Vehicle {
 			System.out.println("not connected");
 		}
 	}
+	
+	public int getSpeed() {
+		return speed;
+	}
 
 	public void changeLane(float offset) {
 		if (bluetoothDevice.getConnected()) {
@@ -175,10 +179,6 @@ public class Vehicle {
 
 	public Optional<Model> getModel() {
 		return model;
-	}
-
-	public int getSpeed() {
-		return speed;
 	}
 
 	@Override
