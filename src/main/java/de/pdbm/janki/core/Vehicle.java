@@ -136,10 +136,12 @@ public class Vehicle {
 		return connected;
 	}
 
+	
 	public boolean isOnCharger() {
 		return onCharger;
 	}
 
+	
 	/**
 	 * A vehicle is ready to start, if it
 	 * <ul>
@@ -154,6 +156,25 @@ public class Vehicle {
 	public boolean isReadyToStart() {
 		return connected && !onCharger && writeCharacteristic != null && readCharacteristic != null;
 	}
+	
+	
+	/**
+	 * Disconnect the vehicle.
+	 * 
+	 * Disconnect is done by first send the ANKI disconnect message and then disconnect
+	 * the bluetooth device.
+	 * 
+	 */
+	public void disconnect() {
+		if (bluetoothDevice.getConnected()) {
+			bluetoothDevice.disableConnectedNotifications();
+			writeCharacteristic.writeValue(Message.disconnectMessage());
+			bluetoothDevice.disconnect();
+		} else {
+			Logger.log(LogType.CONNECTED_NOTIFICATION, toShortString() + " not connected" );
+		}
+	}
+	
 	
 	/**
 	 * Add a {@link NotificationListener}.
@@ -405,8 +426,7 @@ public class Vehicle {
 		 */
 		private static void disconnectAll() {
 			System.out.println("Disconnecting all devices...");
-			// Vehicle.vehicles.entrySet().forEach(entry -> entry.getKey().bluetoothDevice.disconnect());
-			Vehicle.vehicles.entrySet().parallelStream().forEach(entry -> entry.getKey().bluetoothDevice.disconnect());
+			Vehicle.vehicles.entrySet().parallelStream().forEach(entry -> entry.getKey().disconnect());
 		}
 
 		/**
@@ -539,8 +559,8 @@ public class Vehicle {
 
 	public enum Model {
 
-		KOURAI(0x01), BOSON(0x02), RHO(0x03), KATAL(0x04), HADION(0x05), SPEKTRIX(0x06), CORAX(0x07), GROUNDSHOCK(0x08), SKULL(0x09), THERMO(0x0a), NUKE(
-				0x0b), GUARDIAN(0x0d), BIGBANG(0x0e);
+		KOURAI(0x01), BOSON(0x02), RHO(0x03), KATAL(0x04), HADION(0x05), SPEKTRIX(0x06), CORAX(0x07), GROUNDSHOCK(0x08), SKULL(0x09), 
+		THERMO(0x0a), NUKE(0x0b), GUARDIAN(0x0c), BIGBANG(0x0e);
 
 		private int id;
 
@@ -554,7 +574,7 @@ public class Vehicle {
 					return values()[i];
 				}
 			}
-			throw new IllegalArgumentException("Unbekannte Auto-Id");
+			throw new IllegalArgumentException("Unbekannte Auto-Id " + id);
 		}
 	}
 
@@ -563,7 +583,7 @@ public class Vehicle {
 		@Override
 		public void onConnectedNotification(ConnectedNotification connectedNotification) {
 			Vehicle.this.connected = connectedNotification.isConnected();
-			Logger.log(LogType.CONNECTED_NOTIFICATION, Vehicle.this.toShortString() + (Vehicle.this.connected ? " " : " dis") + "connected");
+			
 		}
 
 	}

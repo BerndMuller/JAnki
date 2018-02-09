@@ -24,7 +24,7 @@ public class Message {
 	private static final byte SET_SPEED = 0x24;
 	private static final byte CHANGE_LANE= 0x25;
 	private static final byte SET_OFFSET_FROM_ROAD_CENTER = 0x2c;
-	
+	private static final byte DISCONNECT = 0x0d;
 	
 	
 	/**
@@ -39,6 +39,17 @@ public class Message {
 		return new byte[] {3, -112, 1, 1};
 	}
 	
+
+	/**
+	 * Disconnects device with ANKI message instead of bluetooth disconnect
+	 * 
+	 * @return message representing the disconnect message
+	 */
+	public static byte[] disconnectMessage() {
+		return new byte[]{1, DISCONNECT};
+	}
+	
+
 	/**
 	 * 
 	 * @param speed the speed
