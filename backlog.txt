@@ -1,7 +1,13 @@
 Prüfen, wie weit ein change lane für genau eine Spur sein muss, und ob man
 immer auf 0 kalibrieren muss.
 
+Event für Kreuzung
+
 message 0x40 with one byte payload 0x01 start, 0x00 stop test mode of vehicle
 
 message 0x89, no payload to turn vehicle of (not in test mode)
+
+https://4comprehension.com/completablefuture-timeout/
+
+https://winterbe.com/posts/2018/08/29/migrate-maven-projects-to-java-11-jigsaw/
 

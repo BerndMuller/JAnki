@@ -34,7 +34,7 @@ public class Main {
 				if (vehicle == null) {
 					System.out.println("No vehicle selected");
 				} else if (tokens.length == 2) {
-					vehicle.setSpeed(new Integer(tokens[1]));
+					vehicle.setSpeed(Integer.valueOf((tokens[1])));
 				}
 			} else if (line.equals("clr")) {
 				vehicle.changeLane(20.0f);
